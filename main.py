@@ -372,7 +372,7 @@ def main_worker(gpu, ngpus_per_node, args):
 # @mst
 def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=10, print_log=True):
     # since model is new, we need a new optimizer
-    if args.arch.startswith('lenet'):
+    if args.solver == 'Adam':
         logprint('==> Start to finetune: using Adam optimizer')
         optimizer = torch.optim.Adam(model.parameters(), args.lr)
     else:

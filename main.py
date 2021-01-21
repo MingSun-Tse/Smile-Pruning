@@ -271,7 +271,7 @@ def main_worker(gpu, ngpus_per_node, args):
             if prune_state == 'finetune':
                 model = state['model'].cuda()
                 model.load_state_dict(state['state_dict'])
-                if args.arch.startswith('lenet'):
+                if args.solver == 'Adam':
                     logprint('==> Using Adam optimizer')
                     optimizer = torch.optim.Adam(model.parameters(), args.lr)
                 else:

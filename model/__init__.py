@@ -1,7 +1,7 @@
 from importlib import import_module
 from .vgg import vgg11, vgg13, vgg16, vgg19
 from .resnet_cifar10 import resnet56
-from .lenet5 import lenet5, lenet5_mini
+from .lenet5 import lenet5, lenet5_mini, lenet5_linear
 from .mlp import mlp_7_linear
 
 def set_up_model(args, logger):
@@ -21,6 +21,7 @@ model_dict = {
     'mlp_7_linear': mlp_7_linear,
     'lenet5': lenet5,
     'lenet5_mini': lenet5_mini,
+    'lenet5_linear': lenet5_linear,
     'resnet56': resnet56,
     'vgg11': vgg11,
     'vgg13': vgg13,
@@ -32,6 +33,7 @@ num_layers = {
     'mlp_7_linear': 7,
     'lenet5': 5,
     'lenet5_mini': 5,
+    'lenet5_linear': 5,
     'alexnet': 8,
     'vgg11': 11,
     'vgg13': 13,

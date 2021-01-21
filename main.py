@@ -31,7 +31,7 @@ from importlib import import_module
 from data import Data
 from logger import Logger
 from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
-from utils import add_noise_to_model, compute_jacobian
+from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal
 from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
@@ -110,6 +110,9 @@ def main_worker(gpu, ngpus_per_node, args):
             model = models.__dict__[args.arch](num_classes=num_classes)
     else: # @mst: added non-imagenet models
         model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn)
+        if args.init == 'orth':
+            model.apply(_weights_init_orthogonal)
+            logprint('==> Use weight initialization: orthogonal')
 
     # @mst: save the model after initialization if necessary
     if args.save_init_model:

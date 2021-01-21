@@ -108,6 +108,7 @@ parser.add_argument('--oracle_pruning', action="store_true")
 parser.add_argument('--ft_in_oracle_pruning', action="store_true")
 parser.add_argument('--last_n_epoch', type=int, default=5, help='in correlation analysis, collect the last_n_epoch loss and average them')
 parser.add_argument('--check_jsv_loop', type=int, default=0, help="num of batch loops when checking Jacobian singuar values")
+parser.add_argument('--init', type=str, default='default', help="weight initialization scheme")
 
 # GReg method related (default setting is for ImageNet):
 parser.add_argument('--batch_size_prune', type=int, default=64)

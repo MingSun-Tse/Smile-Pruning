@@ -26,6 +26,15 @@ def _weights_init(m):
             m.weight.data.fill_(1.0)
             m.bias.data.zero_()
 
+def _weights_init_orthogonal(m):
+    if isinstance(m, (nn.Conv2d, nn.Linear)):
+        init.orthogonal_(m.weight)
+    elif isinstance(m, nn.BatchNorm2d):
+        if m.weight is not None:
+            m.weight.data.fill_(1.0)
+            m.bias.data.zero_()
+
+
 # refer to: https://github.com/Eric-mingjie/rethinking-network-pruning/blob/master/imagenet/l1-norm-pruning/compute_flops.py
 def get_n_params(model):
     total = sum([param.nelement() if param.requires_grad else 0 for param in model.parameters()])
@@ -844,3 +853,4 @@ def compute_jacobian(inputs, output):
 		jacobian[i] = inputs.grad.data
 
 	return torch.transpose(jacobian, dim0=0, dim1=1)
+

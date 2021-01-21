@@ -3,7 +3,7 @@ import torch.nn as nn
 import copy
 import time
 import numpy as np
-from utils import _weights_init
+from utils import _weights_init, _weights_init_orthogonal
 from .meta_pruner import MetaPruner
 
 class Pruner(MetaPruner):
@@ -16,12 +16,12 @@ class Pruner(MetaPruner):
                     
         if self.args.reinit:
             if self.args.reinit == 'orth':
+                self.model.apply(_weights_init_orthogonal)
                 self.logprint("==> Reinit model: orthogonal initialization")
-                for module in self.model.modules():
-                    if isinstance(module, (nn.Conv2d, nn.Linear)):
-                        nn.init.orthogonal_(module.weight.data)
-            else:
+            elif self.args.reinit == 'default':
                 self.model.apply(_weights_init) # equivalent to training from scratch
-                self.logprint("==> Reinit model: normal initialization")
+                self.logprint("==> Reinit model: default initialization (kaiming_normal for Conv; 0 mean, 1 std for BN)")
+            else:
+                raise NotImplementedError
             
         return self.model

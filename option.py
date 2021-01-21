@@ -110,6 +110,7 @@ parser.add_argument('--last_n_epoch', type=int, default=5, help='in correlation 
 parser.add_argument('--jsv_loop', type=int, default=0, help="num of batch loops when checking Jacobian singuar values")
 parser.add_argument('--init', type=str, default='default', help="weight initialization scheme")
 parser.add_argument('--activation', type=str, default='relu', help="activation function", choices=['relu', 'leaky_relu', 'linear', 'tanh', 'sigmoid'])
+parser.add_argument('--lr_AI', type=float, default=0.001, help="lr in approximate_isometry_optimize")
 
 # GReg method related (default setting is for ImageNet):
 parser.add_argument('--batch_size_prune', type=int, default=64)

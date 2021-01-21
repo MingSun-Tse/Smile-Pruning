@@ -31,7 +31,7 @@ from importlib import import_module
 from data import Data
 from logger import Logger
 from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
-from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal
+from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
 from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
@@ -111,8 +111,8 @@ def main_worker(gpu, ngpus_per_node, args):
     else: # @mst: added non-imagenet models
         model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn)
         if args.init == 'orth':
-            model.apply(_weights_init_orthogonal)
-            logprint('==> Use weight initialization: orthogonal')
+            model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation))
+            logprint('==> Use weight initialization: orthogonal. Activation: %s' % args.activation)
 
     # @mst: save the model after initialization if necessary
     if args.save_init_model:
@@ -353,25 +353,13 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.wg == 'weight':
                 state['mask'] = mask 
             save_model(state, mark="just_finished_prune")
-    # ---
 
-    # check Jacobian singular value (JSV)
-    if args.check_jsv_loop:
-        jsv = []
-        for i, (images, target) in enumerate(train_loader):
-            if i < args.check_jsv_loop:
-                images, target = images.cuda(), target.cuda()
-                batch_size = images.size(0)
-                images.requires_grad = True # for Jacobian computation
-                output = model(images)
-                jacobian = compute_jacobian(images, output) # shape [batch_size, num_classes, num_channels, input_width, input_height]
-                jacobian = jacobian.view(batch_size, num_classes, -1)
-                u, s, v = torch.svd(jacobian)
-                jsv.append(s.data.cpu().numpy())
-                logprint('[%3d/%3d] calculating Jacobian...' % (i, len(train_loader)))
-        jsv = np.concatenate(jsv)
-        logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f' % 
-            (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv)))
+            # check Jacobian singular value (JSV)
+            if args.jsv_loop:
+                jsv = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint)
+                logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f' % 
+                    (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv)))
+    # ---
 
     if args.evaluate:
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
@@ -379,10 +367,10 @@ def main_worker(gpu, ngpus_per_node, args):
         return
 
     # finetune
-    finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args)
+    finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=num_classes)
 
 # @mst
-def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, print_log=True):
+def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=10, print_log=True):
     # since model is new, we need a new optimizer
     if args.arch.startswith('lenet'):
         logprint('==> Start to finetune: using Adam optimizer')
@@ -410,6 +398,12 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
+
+        # @mst: check Jacobian singular value (JSV)
+        if args.jsv_loop:
+            jsv = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint)
+            logprint('Epoch %d JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f' % 
+                (epoch, np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv)))
 
         # @mst: check weights magnitude during finetune
         if args.method in ['GReg-1', 'GReg-2'] and not isinstance(pruner, type(None)):

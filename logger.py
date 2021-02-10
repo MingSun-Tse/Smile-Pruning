@@ -263,8 +263,11 @@ class Logger(object):
         self.script_hist = open('.script_history', 'a+') # save local script history, for convenience of check
 
     def print_script(self):
-        gpu_id = os.environ['CUDA_VISIBLE_DEVICES']
-        script = " ".join(["CUDA_VISIBLE_DEVICES=%s python" % gpu_id, *sys.argv])
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+            gpu_id = os.environ['CUDA_VISIBLE_DEVICES']
+            script = ' '.join(['CUDA_VISIBLE_DEVICES=%s python' % gpu_id, *sys.argv])
+        else:
+            script = ' '.join(['python', *sys.argv])
         print(script, file=self.logtxt, flush=True)
         print(script, file=sys.stdout, flush=True)
         print(script, file=self.script_hist, flush=True)

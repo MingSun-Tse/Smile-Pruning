@@ -53,15 +53,15 @@ class Pruner(MetaPruner):
         mask = self.mask if self.args.wg == 'weight' else None
 
         if self.args.reinit:
-            if self.args.reinit == 'default':
+            if self.args.reinit in ['default', 'kaiming_normal']:
                 self.model.apply(_weights_init) # completely reinit weights via 'kaiming_normal'
                 self.logprint("==> Reinit model: default ('kaiming_normal' for Conv/FC; 0 mean, 1 std for BN)")
 
-            elif self.args.reinit == 'orth':
-                self.model.apply(_weights_init_orthogonal) # completely reinit weights via 'orthogonal_'
+            elif self.args.reinit in ['orth', 'exact_isometry_from_scratch']:
+                self.model.apply(lambda m: _weights_init_orthogonal(m, act=self.args.activation)) # reinit weights via 'orthogonal_' from scratch
                 self.logprint("==> Reinit model: exact_isometry ('orthogonal_' for Conv/FC; 0 mean, 1 std for BN)")
 
-            elif self.args.reinit == 'exact_isometry':
+            elif self.args.reinit == 'exact_isometry_based_on_existing':
                 exact_isometry_based_on_existing_weights(self.model, print=self.logprint) # orthogonalize weights based on existing weights
                 self.logprint("==> Reinit model: exact_isometry (orthogonalize Conv/FC weights based on existing weights)")
 

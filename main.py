@@ -110,9 +110,9 @@ def main_worker(gpu, ngpus_per_node, args):
             model = models.__dict__[args.arch](num_classes=num_classes)
     else: # @mst: added non-imagenet models
         model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn)
-        if args.init == 'orth':
+        if args.init in ['orth', 'exact_isometry_from_scratch']:
             model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation))
-            logprint('==> Use weight initialization: orthogonal. Activation: %s' % args.activation)
+            logprint("==> Use weight initialization: 'orthogonal_'. Activation: %s" % args.activation)
 
     # @mst: save the model after initialization if necessary
     if args.save_init_model:

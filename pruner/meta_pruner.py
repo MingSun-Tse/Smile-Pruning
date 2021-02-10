@@ -99,22 +99,22 @@ class MetaPruner:
             information by the name of a layer.
         '''
         ix = -1 # layer index, starts from 0
-        max_len_name = 0
+        self._max_len_name = 0
         layer_shape = {}
         for name, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):
                 if "downsample" not in name:
                     ix += 1
                 layer_shape[name] = [ix, m.weight.size()]
-                max_len_name = max(max_len_name, len(name))
+                self._max_len_name = max(self._max_len_name, len(name))
                 
                 size = m.weight.size()
                 res = True if self.args.arch.startswith('resnet') else False
                 self.layers[name] = Layer(name, size, ix, res, layer_type=m.__class__.__name__)
         
-        max_len_ix = len("%s" % ix)
+        self._max_len_ix = len("%s" % ix)
         print("Register layer index and kernel shape:")
-        format_str = "[%{}d] %{}s -- kernel_shape: %s".format(max_len_ix, max_len_name)
+        format_str = "[%{}d] %{}s -- kernel_shape: %s".format(self._max_len_ix, self._max_len_name)
         for name, (ix, ks) in layer_shape.items():
             print(format_str % (ix, name, ks))
 
@@ -181,11 +181,12 @@ class MetaPruner:
         '''
             Do not consider the downsample 1x1 shortcuts.
         '''
-        n_filter = []
+        n_filter = OrderedDict()
         for name, m in model.named_modules():
-            if isinstance(m, self.learnable_layers):
+            if name in self.layers:
                 if not self.layers[name].is_shortcut:
-                    n_filter.append(m.weight.size(0))
+                    ix = self.layers[name].layer_index
+                    n_filter[ix] = m.weight.size(0)
         return n_filter
     
     def _get_layer_pr_vgg(self, name):
@@ -281,7 +282,8 @@ class MetaPruner:
                         raise NotImplementedError
                     self.pruned_wg[name] = self._pick_pruned(score, self.pr[name], self.args.pick_pruned)
                     self.kept_wg[name] = [i for i in range(len(score)) if i not in self.pruned_wg[name]]
-                    logtmp = '[%2d %s] got pruned wg by L1 sorting (%s), pr %.4f' % (self.layers[name].layer_index, name, self.args.pick_pruned, self.pr[name])
+                    format_str = "[%{}d] %{}s -- got pruned wg by L1 sorting (%s), pr %s".format(self._max_len_ix, self._max_len_name)
+                    logtmp = format_str % (self.layers[name].layer_index, name, self.args.pick_pruned, self.pr[name])
                     
                     # compare the pruned weights picked by L1-sorting vs. other criterion which provides the base_pr_model (e.g., OBD)
                     if self.args.base_pr_model:
@@ -311,6 +313,7 @@ class MetaPruner:
                 else: # current layer is the 1st fc, the previous layer is the last conv
                     last_conv_n_filter = self.layers[prev_learnable_layer].size[0]
                     last_conv_fm_size = int(m.weight.size(1) / last_conv_n_filter) # feature map spatial size. 36 for alexnet
+                    self.logprint('last_conv_feature_map_size: %dx%d (before fed into the first fc)' % (sqrt(last_conv_fm_size), sqrt(last_conv_fm_size)))
                     last_conv_kept_filter = self.kept_wg[prev_learnable_layer]
                     kept_chl = []
                     for i in last_conv_kept_filter:
@@ -336,9 +339,6 @@ class MetaPruner:
                     new_layer = nn.Conv2d(kept_weights.size(1), kept_weights.size(0), m.kernel_size,
                                     m.stride, m.padding, m.dilation, m.groups, bias).cuda()
                 elif isinstance(m, nn.Linear):
-                    print(name)
-                    print('kept_filter:', len(kept_filter))
-                    print('kept_chl:', len(kept_chl))
                     kept_weights = m.weight.data[kept_filter][:, kept_chl]
                     new_layer = nn.Linear(in_features=len(kept_chl), out_features=len(kept_filter), bias=bias).cuda()
                 new_layer.weight.data.copy_(kept_weights) # load weights into the new module
@@ -374,7 +374,11 @@ class MetaPruner:
 
         self.model = new_model
         n_filter = self._get_n_filter(self.model)
-        self.logprint('n_filter of pruned model: %s' % n_filter)
+        logtmp = '{'
+        for ix, num in n_filter.items():
+            logtmp += '%s:%d, ' % (ix, num)
+        logtmp = logtmp[:-2] + '}'
+        self.logprint('n_filter of pruned model: %s' % logtmp)
     
     def _get_masks(self):
         '''Get masks for unstructured pruning

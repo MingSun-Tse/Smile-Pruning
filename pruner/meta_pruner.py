@@ -3,7 +3,7 @@ import torch.nn as nn
 import copy
 import time
 import numpy as np
-from math import ceil
+from math import ceil, sqrt
 from collections import OrderedDict
 from utils import strdict_to_dict
 

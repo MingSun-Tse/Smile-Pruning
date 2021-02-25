@@ -241,13 +241,10 @@ class MetaPruner:
         return pr
     
     def get_pr(self):
-        if self.is_single_branch(self.args.arch):
-            get_layer_pr = self._get_layer_pr_vgg
-        else:
-            get_layer_pr = self._get_layer_pr_resnet
-
         self.pr = {}
         if self.args.stage_pr: # stage_pr may be None (in the case that base_pr_model is provided)
+            assert self.args.base_pr_model is None
+            get_layer_pr = self._get_layer_pr_vgg if self.is_single_branch(self.args.arch) else self._get_layer_pr_resnet
             for name, m in self.model.named_modules():
                 if isinstance(m, self.learnable_layers):
                     self.pr[name] = get_layer_pr(name)

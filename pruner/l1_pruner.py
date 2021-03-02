@@ -10,7 +10,7 @@ from .meta_pruner import MetaPruner
 # refer to: A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).
 # https://github.com/namhoonlee/spp-public
 def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=print):
-    def optimize(w):
+    def optimize(w, layer_name):
         '''Approximate Isometry for sparse weights by iterative optimization
         '''
         flattened = w.view(w.size(0), -1) # [n_filter, -1]
@@ -23,7 +23,7 @@ def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=pr
             loss.backward()
             optim.step()
             if not isinstance(mask, type(None)):
-                w_ = torch.mul(w_, mask[name]) # not update the pruned params
+                w_ = torch.mul(w_, mask[layer_name].view_as(w_)) # not update the pruned params
             w_ = torch.autograd.Variable(w_, requires_grad=True)
             optim = torch.optim.Adam([w_], lr)
             # if i % 10 == 0:
@@ -32,7 +32,7 @@ def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=pr
     
     for name, m in model.named_modules():
         if isinstance(m, (nn.Conv2d, nn.Linear)):
-            w_ = optimize(m.weight)
+            w_ = optimize(m.weight, name)
             m.weight.data.copy_(w_)
             print('Finished approximate_isometry_optimize for layer "%s"' % name)
 

@@ -69,3 +69,6 @@ class FCNet(nn.Module):
 # https://github.com/namhoonlee/spp-public/blob/32bde490f19b4c28843303f1dc2935efcd09ebc9/spp/network.py#L108
 def mlp_7_linear(**kwargs):
     return FCNet(d_image=1024, n_class=10, n_fc=7, width=100, act='linear')
+
+def mlp_7_relu(**kwargs):
+    return FCNet(d_image=1024, n_class=10, n_fc=7, width=100, act='relu')

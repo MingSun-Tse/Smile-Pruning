@@ -3,7 +3,7 @@ import torch.nn as nn
 import copy
 import time
 import numpy as np
-from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights
+from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights, delta_orthogonalize_weights
 from .meta_pruner import MetaPruner
 
 
@@ -36,12 +36,24 @@ def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=pr
             m.weight.data.copy_(w_)
             print('Finished approximate_isometry_optimize for layer "%s"' % name)
 
-def exact_isometry_based_on_existing_weights(model, print=print):
+def exact_isometry_based_on_existing_weights(model, act, print=print):
     for name, m in model.named_modules():
         if isinstance(m, (nn.Conv2d, nn.Linear)):
-            w_ = orthogonalize_weights(m.weight)
+            w_ = orthogonalize_weights(m.weight, act=act)
             m.weight.data.copy_(w_)
             print('Finished exact_isometry for layer "%s"' % name)
+
+def exact_isometry_based_on_existing_weights_delta(model, act, print=print):
+    for name, m in model.named_modules():
+        if isinstance(m, nn.Conv2d):
+            w_ = delta_orthogonalize_weights(m.weight, act=act)
+            m.weight.data.copy_(w_)
+            print('Finished isometry for conv layer "%s"' % name)
+        elif isinstance(m, nn.Linear):
+            w_ = orthogonalize_weights(m.weight, act=act)
+            m.weight.data.copy_(w_)
+            print('Finished isometry for linear layer "%s"' % name)
+
 
 class Pruner(MetaPruner):
     def __init__(self, model, args, logger, runner):
@@ -62,9 +74,12 @@ class Pruner(MetaPruner):
                 self.logprint("==> Reinit model: exact_isometry ('orthogonal_' for Conv/FC; 0 mean, 1 std for BN)")
 
             elif self.args.reinit == 'exact_isometry_based_on_existing':
-                exact_isometry_based_on_existing_weights(self.model, print=self.logprint) # orthogonalize weights based on existing weights
+                exact_isometry_based_on_existing_weights(self.model, act=self.args.activation, print=self.logprint) # orthogonalize weights based on existing weights
                 self.logprint("==> Reinit model: exact_isometry (orthogonalize Conv/FC weights based on existing weights)")
 
+            elif self.args.reinit == 'exact_isometry_based_on_existing_delta':
+                exact_isometry_based_on_existing_weights_delta(self.model, act=self.args.activation, print=self.logprint)
+                
             elif self.args.reinit == 'approximate_isometry': # A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020)
                 approximate_isometry_optimize(self.model, mask=mask, lr=self.args.lr_AI, n_iter=10000, print=self.logprint) # 10000 refers to the paper above; lr in the paper is 0.1, but not converged here
                 self.logprint("==> Reinit model: approximate_isometry")

@@ -1,6 +1,5 @@
 import numpy as np, os, sys
 import matplotlib.pyplot as plt
-from scipy import stats
 import argparse
 from utils import set_ax, parse_value, parse_ExpID, check_path
 from logger import Logger
@@ -29,20 +28,25 @@ ExpID = logger.ExpID # exp id for this plot project
 colors = ['red', 'blue']
 linestyles = ['-', ':', '-.', '--']
 markers = []
-legends = args.legends.split(';')
+legends = args.legends.split('/')
 
 # set up fig and needed axes
 fig, ax1 = plt.subplots()
 ax2 = ax1.twinx()
 
+# set x ylim
+# ax1.set_xlim(0, 89)
+ax1.set_ylim(0, 6)
+ax2.set_ylim(0, 100)
+
 # set background, spines, etc.
 set_ax(ax1)
 set_ax(ax2)
 
-# set x ylim
-ax1.set_xlim(0, 89)
-ax1.set_ylim(0, 3.6)
-ax2.set_ylim(0, 100)
+# make grid of two axes aligned
+# ax2.set_yticks(np.linspace(ax2.get_yticks()[0], ax2.get_yticks()[-1], len(ax1.get_yticks()))) 
+# above refer to https://stackoverflow.com/questions/26752464/how-do-i-align-gridlines-for-two-y-axis-scales-using-matplotlib, not working
+ax2.grid(None)
 
 # set x ylabel
 ax1.set_xlabel('Epoch', fontsize=14)
@@ -74,12 +78,15 @@ def one_exp_plot(log_file, ix):
     ax2.tick_params(axis='y', colors=colors[1])
 
 # ------------------------------------------ main function to deal with multi-experiment log files
-exp_ids = args.exp_ids.split(';')
+exp_ids = args.exp_ids.split('/')
 ix = -1
 for exp_id in exp_ids:
     ix += 1
     log_file = 'Experiments/*%s*/log/%s' % (exp_id, args.log_file)
-    log_file = check_path(log_file)
+    try:
+        log_file = check_path(log_file)
+    except:
+        logprint('Error when locating "%s"' % log_file)
     # plot one log file
     logprint('[%d] Plot: "%s"' % (ix, log_file))
     one_exp_plot(log_file, ix)

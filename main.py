@@ -356,9 +356,9 @@ def main_worker(gpu, ngpus_per_node, args):
 
             # check Jacobian singular value (JSV)
             if args.jsv_loop:
-                jsv = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint)
-                logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f' % 
-                    (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv)))
+                jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
+                logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
+                    (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
     # ---
 
     if args.evaluate:

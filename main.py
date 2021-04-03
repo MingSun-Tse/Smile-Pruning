@@ -32,6 +32,7 @@ from data import Data
 from logger import Logger
 from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
 from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
+from utils import Dataset_lmdb_batch
 from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
@@ -211,15 +212,19 @@ def main_worker(gpu, ngpus_per_node, args):
         valdir = os.path.join(args.data_path, args.dataset, folder)
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
+        transforms_train = transforms.Compose([
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize,
+                ])
 
-        train_dataset = datasets.ImageFolder(
-            traindir,
-            transforms.Compose([
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                normalize,
-            ]))
+        if args.use_lmdb:
+            lmdb_path = traindir + '/lmdb'
+            assert os.path.exists(lmdb_path)
+            train_dataset = Dataset_lmdb_batch(lmdb_path, transforms_train)
+        else:
+            train_dataset = datasets.ImageFolder(traindir, transforms_train)
 
         if args.distributed:
             train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)

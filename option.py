@@ -12,6 +12,8 @@ parser.add_argument('--data', metavar='DIR', # @mst: 'data' -> '--data'
                     help='path to dataset')
 parser.add_argument('--dataset',
                     help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'imagenet', 'imagenet_subset_200', 'tiny_imagenet'])
+parser.add_argument('--use_lmdb', action='store_true',
+                    help='use lmdb format data instead of images of .JPEG/.PNG etc.')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
                     # choices=model_names, # @mst: We will use more than the imagenet models, so remove this
                     help='model architecture: ' +

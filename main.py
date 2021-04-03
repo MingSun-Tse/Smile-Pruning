@@ -208,7 +208,7 @@ def main_worker(gpu, ngpus_per_node, args):
         val_loader = loader.test_loader
     else:   
         traindir = os.path.join(args.data_path, args.dataset, 'train')
-        folder = 'val3' if args.debug else 'val' # @mst
+        folder = 'val3' if args.debug else 'val' # @mst: val3 is a tiny version of val, to accelerate test in debugging
         valdir = os.path.join(args.data_path, args.dataset, folder)
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
@@ -216,15 +216,23 @@ def main_worker(gpu, ngpus_per_node, args):
                     transforms.RandomResizedCrop(224),
                     transforms.RandomHorizontalFlip(),
                     transforms.ToTensor(),
-                    normalize,
-                ])
+                    normalize])
+        transforms_val = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize])
 
         if args.use_lmdb:
-            lmdb_path = traindir + '/lmdb'
-            assert os.path.exists(lmdb_path)
-            train_dataset = Dataset_lmdb_batch(lmdb_path, transforms_train)
+            lmdb_path_train = traindir + '/lmdb'
+            lmdb_path_val = valdir + '/lmdb'
+            assert os.path.exists(lmdb_path_train) and os.path.exists(lmdb_path_val)
+            logprint(f'Loading data in LMDB format: "{lmdb_path_train}" and "{lmdb_path_val}"')
+            train_dataset = Dataset_lmdb_batch(lmdb_path_train, transforms_train)
+            val_dataset = Dataset_lmdb_batch(lmdb_path_val, transforms_val)
         else:
             train_dataset = datasets.ImageFolder(traindir, transforms_train)
+            val_dataset = datasets.ImageFolder(valdir, transforms_val)
 
         if args.distributed:
             train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
@@ -234,23 +242,8 @@ def main_worker(gpu, ngpus_per_node, args):
             num_workers=args.workers, pin_memory=True, sampler=train_sampler)
 
         val_loader = torch.utils.data.DataLoader(
-            datasets.ImageFolder(valdir, transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize,
-            ])),
-            batch_size=args.batch_size, shuffle=False,
+            val_dataset, batch_size=args.batch_size, shuffle=False,
             num_workers=args.workers, pin_memory=True)
-
-        test_set = datasets.ImageFolder(valdir, 
-            transforms.Compose([
-                transforms.Resize(256),
-                transforms.CenterCrop(224),
-                transforms.ToTensor(),
-                normalize,
-            ]))
-        print('number of test example: %d' % len(test_set))
 
     # --- @mst: Structured pruning is basically equivalent to providing a new weight initialization before finetune,
     # so just before training, conduct pruning to obtain a new model.

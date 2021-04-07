@@ -6,10 +6,10 @@ import numpy as np
 from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights, delta_orthogonalize_weights
 from .meta_pruner import MetaPruner
 
-
-# refer to: A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).
-# https://github.com/namhoonlee/spp-public
 def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=print):
+    '''Refer to: 2020-ICLR-A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).
+        Code: https://github.com/namhoonlee/spp-public
+    '''
     def optimize(w, layer_name):
         '''Approximate Isometry for sparse weights by iterative optimization
         '''
@@ -37,6 +37,8 @@ def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=pr
             print('Finished approximate_isometry_optimize for layer "%s"' % name)
 
 def exact_isometry_based_on_existing_weights(model, act, print=print):
+    '''Our proposed method.
+    '''
     for name, m in model.named_modules():
         if isinstance(m, (nn.Conv2d, nn.Linear)):
             w_ = orthogonalize_weights(m.weight, act=act)
@@ -44,6 +46,8 @@ def exact_isometry_based_on_existing_weights(model, act, print=print):
             print('Finished exact_isometry for layer "%s"' % name)
 
 def exact_isometry_based_on_existing_weights_delta(model, act, print=print):
+    '''Refer to 2018-ICML-Dynamical Isometry and a Mean Field Theory of CNNs: How to Train 10,000-Layer Vanilla Convolutional Neural Networks
+    '''
     for name, m in model.named_modules():
         if isinstance(m, nn.Conv2d):
             w_ = delta_orthogonalize_weights(m.weight, act=act)
@@ -53,7 +57,6 @@ def exact_isometry_based_on_existing_weights_delta(model, act, print=print):
             w_ = orthogonalize_weights(m.weight, act=act)
             m.weight.data.copy_(w_)
             print('Finished isometry for linear layer "%s"' % name)
-
 
 class Pruner(MetaPruner):
     def __init__(self, model, args, logger, runner):

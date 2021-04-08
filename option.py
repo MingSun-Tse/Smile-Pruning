@@ -87,7 +87,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'GReg-1', 'GReg-2', 'Oracle'], 
+parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'GReg-1', 'GReg-2', 'Oracle', 'OPP'], 
     help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--skip_layers', type=str, default="", help='layer id to skip when pruning')
@@ -118,9 +118,9 @@ parser.add_argument('--solver', type=str, default='SGD')
 
 # GReg method related (default setting is for ImageNet):
 parser.add_argument('--batch_size_prune', type=int, default=64)
-parser.add_argument('--lr_prune', type=float, default=0.001)
 parser.add_argument('--update_reg_interval', type=int, default=5)
 parser.add_argument('--stabilize_reg_interval', type=int, default=40000)
+parser.add_argument('--lr_prune', type=float, default=0.001)
 parser.add_argument('--reg_upper_limit', type=float, default=1.0)
 parser.add_argument('--reg_upper_limit_pick', type=float, default=1e-2)
 parser.add_argument('--reg_granularity_pick', type=float, default=1e-5)

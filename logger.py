@@ -322,7 +322,7 @@ class Logger(object):
             Save the modle architecture, loss, configs, in case of future check.
         '''
         extensions = ['.py', '.json', '.yaml', '.sh'] # files of these types will be cached
-        self.log_printer("==> caching various config files to '%s'" % self.cache_path)
+        self.log_printer("==> Caching various config files to '%s'" % self.cache_path)
         for root, dirs, files in os.walk("."):
             if "Experiments" in root or "Debug_Dir" in root:
                 continue

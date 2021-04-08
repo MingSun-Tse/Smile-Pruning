@@ -76,3 +76,12 @@ def reinit_model(model, args, mask, print):
     else:
         raise NotImplementedError
     return model
+
+def orth_regularization(w):
+    w_ = w.view(w.size(0), -1)
+    if w_.size(0) < w.size(1):
+        w_ = w_.t()
+    identity = torch.eye(w_.size(0)).cuda()
+    loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
+    # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
+    return loss

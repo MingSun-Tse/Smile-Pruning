@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from .reinit_model import reinit_model
+from .reinit_model import reinit_model, orth_regularization
 from utils import plot_weights_heatmap
 import matplotlib.pyplot as plt
 pjoin = os.path.join
@@ -439,6 +439,19 @@ class Pruner(MetaPruner):
                     
                 # normal training forward
                 loss = self.criterion(y_, targets)
+                logtmp = f'loss_cls {loss:.4f}'
+
+                # OPP regularization
+                if self.args.lw_opp:
+                    loss_opp = 0
+                    for name, module in self.model.named_modules():
+                        if name in self.reg:
+                            loss_opp += orth_regularization(module.weight)
+                    loss += self.args.lw_opp * loss_opp
+                logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
+                if self.total_iter % self.args.print_interval == 0:
+                    self.logprint(logtmp)
+
                 self.optimizer.zero_grad()
                 loss.backward()
                 
@@ -503,7 +516,7 @@ class Pruner(MetaPruner):
                     t1 = t2
             
             # after each epoch training, reinit
-            if epoch % 2 == 0:
+            if epoch % self.args.exact_isometry_interval == 0:
                 acc1_before, *_ = self.test(self.model)
                 self.model = reinit_model(self.model, args=self.args, mask=None, print=self.logprint)
                 acc1_after, *_ = self.test(self.model)

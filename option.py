@@ -128,6 +128,10 @@ parser.add_argument('--reg_granularity_prune', type=float, default=1e-4)
 parser.add_argument('--reg_granularity_recover', type=float, default=-1e-4)
 
 
+# OPP method related:
+parser.add_argument('--lw_opp', type=float, default=0.001)
+parser.add_argument('--exact_isometry_interval', type=int, default=100000000)
+
 args = parser.parse_args()
 args_tmp = {}
 for k, v in args._get_kwargs():

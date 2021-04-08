@@ -448,7 +448,9 @@ class Pruner(MetaPruner):
                         if name in self.reg:
                             loss_opp += orth_regularization(module.weight)
                     loss += self.args.lw_opp * loss_opp
-                logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
+                    logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
+                
+                # print loss
                 if self.total_iter % self.args.print_interval == 0:
                     self.logprint(logtmp)
 
@@ -516,7 +518,7 @@ class Pruner(MetaPruner):
                     t1 = t2
             
             # after each epoch training, reinit
-            if epoch % self.args.exact_isometry_interval == 0:
+            if epoch % self.args.reinit_interval == 0:
                 acc1_before, *_ = self.test(self.model)
                 self.model = reinit_model(self.model, args=self.args, mask=None, print=self.logprint)
                 acc1_after, *_ = self.test(self.model)

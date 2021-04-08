@@ -468,19 +468,6 @@ class Pruner(MetaPruner):
                     self.logprint("After optim update, ave_abs_weight: %.10f current_train_loss: %.4f current_train_acc: %.4f" %
                         (w_abs_sum / w_num_sum, loss.item(), train_acc))
                 
-                # Save heatmap of weights to check the magnitude
-                # if total_iter % self.args.plot_interval == 0:
-                #     cnt_m = 0
-                #     for m in self.modules:
-                #         cnt_m += 1
-                #         if isinstance(m, nn.Conv2d):
-                #             out_path1 = os.path.join(self.logger.logplt_path, "m%d_iter%d_weights_heatmap.jpg" % 
-                #                     (cnt_m, total_iter))
-                #             out_path2 = os.path.join(self.logger.logplt_path, "m%d_iter%d_reg_heatmap.jpg" % 
-                #                     (cnt_m, total_iter))
-                #             plot_weights_heatmap(m.weight.mean(dim=[2, 3]), out_path1)
-                #             plot_weights_heatmap(self.reg[name], out_path2)
-                
                 if self.args.__dict__.get('AdaReg_only_picking') and self.all_layer_finish_pick:
                     self.logprint("GReg-2 just finished picking for all layers. Resume original model and switch to GReg-1. Iter = %d" % total_iter)
                     

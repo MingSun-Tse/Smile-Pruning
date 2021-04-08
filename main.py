@@ -36,6 +36,7 @@ from utils import Dataset_lmdb_batch
 from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
+from pruner.reinit_model import reinit_model
 from option import args
 pjoin = os.path.join
 
@@ -245,6 +246,11 @@ def main_worker(gpu, ngpus_per_node, args):
             val_dataset, batch_size=args.batch_size, shuffle=False,
             num_workers=args.workers, pin_memory=True)
 
+    if args.evaluate:
+        acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
+        logprint('Acc1 %.4f Acc5 %.4f Loss_test %.4f' % (acc1, acc5, loss_test))
+        return
+        
     # --- @mst: Structured pruning is basically equivalent to providing a new weight initialization before finetune,
     # so just before training, conduct pruning to obtain a new model.
     if args.method:
@@ -257,12 +263,16 @@ def main_worker(gpu, ngpus_per_node, args):
             train_loader_prune = loader.train_loader_prune
 
         # get the original unpruned model statistics
-        # n_params_original = get_n_params(model) # old imple, deprecated 
-        # n_flops_original = get_n_flops(model, input_res=img_size, n_channel=num_channels)
-        n_params_original_v2 = get_n_params_(model) # test new func, the old one will be removed
-        n_flops_original_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels) # test new func, the old one will be removed
+        n_params_original_v2 = get_n_params_(model)
+        n_flops_original_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
 
-        prune_state, pruner = '', None
+        # init some variables for pruning
+        prune_state, pruner = 'prune', None
+        if args.wg == 'weight':
+            global mask
+
+        # resume a model
+        # TODO: resuming a model in GReg pruning is not implemented yet
         if args.resume_path:
             state = torch.load(args.resume_path)
             prune_state = state['prune_state'] # finetune or update_reg or stabilize_reg
@@ -281,10 +291,10 @@ def main_worker(gpu, ngpus_per_node, args):
                 args.start_epoch = state['epoch']
                 logprint("==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                         args.resume_path, args.start_epoch, prune_state))
-        
-        if args.wg == 'weight':
-            global mask
+            else:
+                raise NotImplementedError
 
+        # finetune a model
         if args.directly_ft_weights:
             state = torch.load(args.directly_ft_weights)
             model = state['model'].cuda()
@@ -297,7 +307,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 apply_mask_forward(model)
                 logprint('==> mask restored')
 
-        if prune_state != 'finetune':
+        if prune_state in ['prune']:
             class passer: pass # to pass arguments
             passer.test = validate
             passer.finetune = finetune
@@ -309,36 +319,46 @@ def main_worker(gpu, ngpus_per_node, args):
             passer.pruner = pruner
             passer.args = args
             passer.is_single_branch = is_single_branch
+            # ***********************************************************
+            # key pruning function
             pruner = pruner_dict[args.method].Pruner(model, args, logger, passer)
             model = pruner.prune() # get the pruned model
             if args.wg == 'weight':
                 mask = pruner.mask
                 apply_mask_forward(model)
-                logprint('==> zero out pruned weight before finetune')
+                logprint('==> Apply masks before finetuning to ensure the pruned weights are zero')
+            # ***********************************************************
+            
+            # after pruning, we may reinit the remaining weights by some rule
+            if args.reinit:
+                mask = pruner.mask if args.wg == 'weight' else None
+                model = reinit_model(model, args=args, mask=mask, print=logprint)
 
-        # get the statistics of pruned model
-        n_params_now_v2 = get_n_params_(model)
-        n_flops_now_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
-        # logprint("==> n_params_original: {:>7.4f}M, n_flops_original: {:>7.4f}G".format(n_params_original, n_flops_original))
-        logprint("==> n_params_original_v2: {:>7.4f}M, n_flops_original_v2: {:>7.4f}G".format(n_params_original_v2/1e6, n_flops_original_v2/1e9))
-        logprint("==> n_params_now_v2:      {:>7.4f}M, n_flops_now_v2:      {:>7.4f}G".format(n_params_now_v2/1e6, n_flops_now_v2/1e9))
-        ratio_param = (n_params_original_v2 - n_params_now_v2) / n_params_original_v2
-        ratio_flops = (n_flops_original_v2 - n_flops_now_v2) / n_flops_original_v2
-        compression_ratio = 1.0 / (1 - ratio_param)
-        speedup_ratio = 1.0 / (1 - ratio_flops)
-        logprint("==> reduction ratio -- params: {:>5.2f}% (compression {:>.2f}x), flops: {:>5.2f}% (speedup {:>.2f}x)".format(ratio_param*100, compression_ratio, ratio_flops*100, speedup_ratio))
+            # get model statistics of the pruned model
+            n_params_now_v2 = get_n_params_(model)
+            n_flops_now_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
+            logprint("==> n_params_original_v2: {:>9.6f}M, n_flops_original_v2: {:>9.6f}G".format(n_params_original_v2/1e6, n_flops_original_v2/1e9))
+            logprint("==> n_params_now_v2:      {:>9.6f}M, n_flops_now_v2:      {:>9.6f}G".format(n_params_now_v2/1e6, n_flops_now_v2/1e9))
+            ratio_param = (n_params_original_v2 - n_params_now_v2) / n_params_original_v2
+            ratio_flops = (n_flops_original_v2 - n_flops_now_v2) / n_flops_original_v2
+            compression_ratio = 1.0 / (1 - ratio_param)
+            speedup_ratio = 1.0 / (1 - ratio_flops)
+            logprint("==> reduction ratio -- params: {:>5.2f}% (compression ratio {:>.2f}x), flops: {:>5.2f}% (speedup ratio {:>.2f}x)".format(ratio_param*100, compression_ratio, ratio_flops*100, speedup_ratio))
         
-        # test and save just pruned model
-        netprint(model, comment='model that was just pruned')
-        if prune_state != 'finetune':
+            # test the just pruned model
+            netprint(model, comment='model that was just pruned')
             t1 = time.time()
+            # test set
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-            if args.dataset != 'imagenet': # too costly, not test for now
-                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std)
-            else:
+            # train set
+            if args.dataset in ['imagenet']: # too costly, not test
                 acc1_train, acc5_train, loss_train = -1, -1, -1
+            else:
+                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std)
             accprint("Acc1 %.4f Acc5 %.4f Loss_test %.4f | Acc1_train %.4f Acc5_train %.4f Loss_train %.4f | (test_time %.2fs) Just got pruned model, about to finetune" % 
                 (acc1, acc5, loss_test, acc1_train, acc5_train, loss_train, time.time()-t1))
+            
+            # save the just pruned model
             state = {'arch': args.arch,
                     'model': model,
                     'state_dict': model.state_dict(),
@@ -349,20 +369,15 @@ def main_worker(gpu, ngpus_per_node, args):
                     'kept_wg': pruner.kept_wg,
             }
             if args.wg == 'weight':
-                state['mask'] = mask 
+                state['mask'] = mask
             save_model(state, mark="just_finished_prune")
 
-            # check Jacobian singular value (JSV)
+            # check Jacobian singular value (JSV) after pruning
             if args.jsv_loop:
                 jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
                 logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
                     (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
     # ---
-
-    if args.evaluate:
-        acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-        logprint('Acc1 %.4f Acc5 %.4f Loss_test %.4f' % (acc1, acc5, loss_test))
-        return
 
     # finetune
     finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=num_classes)

@@ -300,12 +300,12 @@ def main_worker(gpu, ngpus_per_node, args):
             model = state['model'].cuda()
             model.load_state_dict(state['state_dict'])
             prune_state = 'finetune'
-            logprint("==> load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+            logprint("==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                     args.directly_ft_weights, args.start_epoch, prune_state))
             if 'mask' in state:
                 mask = state['mask']
                 apply_mask_forward(model)
-                logprint('==> mask restored')
+                logprint('==> Mask restored')
 
         if prune_state in ['prune']:
             class passer: pass # to pass arguments
@@ -328,11 +328,6 @@ def main_worker(gpu, ngpus_per_node, args):
                 apply_mask_forward(model)
                 logprint('==> Apply masks before finetuning to ensure the pruned weights are zero')
             # ***********************************************************
-            
-            # after pruning, we may reinit the remaining weights by some rule
-            if args.reinit:
-                mask = pruner.mask if args.wg == 'weight' else None
-                model = reinit_model(model, args=args, mask=mask, print=logprint)
 
             # get model statistics of the pruned model
             n_params_now_v2 = get_n_params_(model)
@@ -348,13 +343,11 @@ def main_worker(gpu, ngpus_per_node, args):
             # test the just pruned model
             netprint(model, comment='model that was just pruned')
             t1 = time.time()
-            # test set
-            acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-            # train set
+            acc1, acc5, loss_test = validate(val_loader, model, criterion, args) # test set
             if args.dataset in ['imagenet']: # too costly, not test
                 acc1_train, acc5_train, loss_train = -1, -1, -1
             else:
-                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std)
+                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std)  # train set
             accprint("Acc1 %.4f Acc5 %.4f Loss_test %.4f | Acc1_train %.4f Acc5_train %.4f Loss_train %.4f | (test_time %.2fs) Just got pruned model, about to finetune" % 
                 (acc1, acc5, loss_test, acc1_train, acc5_train, loss_train, time.time()-t1))
             
@@ -371,13 +364,18 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.wg == 'weight':
                 state['mask'] = mask
             save_model(state, mark="just_finished_prune")
-
-            # check Jacobian singular value (JSV) after pruning
-            if args.jsv_loop:
-                jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-                logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
-                    (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
     # ---
+
+    # before finetuning, we may reinit the weights by some rule
+    if args.reinit:
+        mask = pruner.mask if args.wg == 'weight' else None
+        model = reinit_model(model, args=args, mask=mask, print=logprint)
+
+    # check Jacobian singular value (JSV) after pruning
+    if args.jsv_loop:
+        jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
+        logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
+            (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 
     # finetune
     finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=num_classes)

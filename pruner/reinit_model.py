@@ -23,7 +23,7 @@ def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=pr
                 w_ = torch.mul(w_, mask[layer_name].view_as(w_)) # not update the pruned params
             w_ = torch.autograd.Variable(w_, requires_grad=True)
             optim = torch.optim.Adam([w_], lr)
-            # if i % 10 == 0:
+            # if i % 100 == 0:
             #     print('[%d/%d] approximate_isometry_optimize for layer "%s", loss %.6f' % (i, n_iter, name, loss.item()))
         return w_.view(m.weight.shape)
     

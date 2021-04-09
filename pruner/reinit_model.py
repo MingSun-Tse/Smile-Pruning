@@ -1,6 +1,7 @@
 from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights, delta_orthogonalize_weights
 import torch
 import torch.nn as nn
+import numpy as np
 
 def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=print):
     '''Refer to: 2020-ICLR-A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).
@@ -85,3 +86,13 @@ def orth_regularization(w):
     loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
     # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
     return loss
+
+def deconv_orth_dist(kernel, stride = 2, padding = 1):
+    '''Refer to 2020-CVPR-Orthogonal Convolutional Neural Networks.
+    '''
+    [o_c, i_c, w, h] = kernel.shape
+    output = torch.conv2d(kernel, kernel, stride=stride, padding=padding)
+    target = torch.zeros((o_c, o_c, output.shape[-2], output.shape[-1])).cuda()
+    ct = int(np.floor(output.shape[-1]/2))
+    target[:,:,ct,ct] = torch.eye(o_c).cuda()
+    return torch.norm( output - target )

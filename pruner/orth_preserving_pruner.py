@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from .reinit_model import reinit_model, orth_regularization
+from .reinit_model import reinit_model, orth_regularization, deconv_orth_dist
 from utils import plot_weights_heatmap
 import matplotlib.pyplot as plt
 pjoin = os.path.join
@@ -446,7 +446,11 @@ class Pruner(MetaPruner):
                     loss_opp = 0
                     for name, module in self.model.named_modules():
                         if name in self.reg:
-                            loss_opp += orth_regularization(module.weight)
+                            shape = self.layers[name].size
+                            if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
+                                loss_opp += orth_regularization(module.weight)
+                            else:
+                                loss_opp += deconv_orth_dist(module.weight)
                     loss += self.args.lw_opp * loss_opp
                     logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
                 

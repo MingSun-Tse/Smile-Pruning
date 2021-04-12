@@ -448,7 +448,7 @@ class Pruner(MetaPruner):
                         if name in self.reg:
                             shape = self.layers[name].size
                             if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
-                                loss_opp += orth_regularization(module.weight)
+                                loss_opp += orth_regularization(module.weight, transpose=self.args.transpose)
                             else:
                                 loss_opp += deconv_orth_dist(module.weight)
                     loss += self.args.lw_opp * loss_opp

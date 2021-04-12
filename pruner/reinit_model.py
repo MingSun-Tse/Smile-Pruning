@@ -78,9 +78,9 @@ def reinit_model(model, args, mask, print):
         raise NotImplementedError
     return model
 
-def orth_regularization(w):
+def orth_regularization(w, transpose=True):
     w_ = w.view(w.size(0), -1)
-    if w_.size(0) < w.size(1):
+    if transpose and w_.size(0) < w.size(1):
         w_ = w_.t()
     identity = torch.eye(w_.size(0)).cuda()
     loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)

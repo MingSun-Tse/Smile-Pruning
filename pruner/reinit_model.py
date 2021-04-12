@@ -87,6 +87,15 @@ def orth_regularization(w, transpose=True):
     # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
     return loss
 
+def orth_regularization_v3(w, pruned_wg):
+    w_ = w.view(w.size(0), -1)
+    identity = torch.eye(w_.size(0)).cuda()
+    for x in pruned_wg:
+        identity[x, x] = 0
+    loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
+    # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
+    return loss
+
 def deconv_orth_dist(kernel, stride = 2, padding = 1):
     '''Refer to 2020-CVPR-Orthogonal Convolutional Neural Networks.
     '''

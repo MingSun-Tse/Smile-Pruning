@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from .reinit_model import reinit_model, orth_regularization, deconv_orth_dist
+from .reinit_model import reinit_model, orth_regularization, orth_regularization_v3, deconv_orth_dist
 from utils import plot_weights_heatmap
 import matplotlib.pyplot as plt
 pjoin = os.path.join
@@ -455,6 +455,8 @@ class Pruner(MetaPruner):
                                     loss_opp += deconv_orth_dist(module.weight)
                             elif self.args.opp_scheme == 2:
                                 orth_regularization(module.weight, transpose=self.args.transpose)
+                            elif self.args.opp_scheme == 3:
+                                orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
                             else:
                                 raise NotImplementedError
 

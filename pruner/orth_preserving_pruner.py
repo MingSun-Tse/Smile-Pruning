@@ -446,11 +446,18 @@ class Pruner(MetaPruner):
                     loss_opp = 0
                     for name, module in self.model.named_modules():
                         if name in self.reg:
-                            shape = self.layers[name].size
-                            if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
-                                loss_opp += orth_regularization(module.weight, transpose=self.args.transpose)
+                            if self.args.opp_scheme == 1:
+                                # Not working
+                                shape = self.layers[name].size
+                                if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
+                                    loss_opp += orth_regularization(module.weight)
+                                else:
+                                    loss_opp += deconv_orth_dist(module.weight)
+                            elif self.args.opp_scheme == 2:
+                                orth_regularization(module.weight, transpose=self.args.transpose)
                             else:
-                                loss_opp += deconv_orth_dist(module.weight)
+                                raise NotImplementedError
+
                     loss += self.args.lw_opp * loss_opp
                     logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
                 

@@ -128,6 +128,7 @@ parser.add_argument('--reg_granularity_prune', type=float, default=1e-4)
 parser.add_argument('--reg_granularity_recover', type=float, default=-1e-4)
 
 # OPP method related:
+parser.add_argument('--opp_scheme', type=int, default=1, help='scheme id, used to develop new methods')
 parser.add_argument('--lw_opp', type=float, default=0.001)
 parser.add_argument('--reinit_interval', type=int, default=100000000)
 parser.add_argument('--no_transpose', dest='transpose', action='store_false', default=True, help='not use transpose for orth_regularization')

@@ -216,15 +216,6 @@ class Pruner(MetaPruner):
             self._log_down_mag_reg(w_abs, name)
         
         # save order
-        # if not hasattr(self, 'order_by_L1'):
-            # self.order_by_L1 = {}
-            # self.wg_preprune = {} # deprecated: dict costs too much memory and seriously slow down training
-        # if name in self.order_by_L1:
-        #     self.order_by_L1[name] = torch.cat([self.order_by_L1[name], order], dim=0)
-        #     self.wg_preprune[name] = torch.cat([self.wg_preprune[name], wg_pruned], dim=0)
-        # else:
-        #     self.order_by_L1[name] = order
-        #     self.wg_preprune[name] = wg_pruned
         if self.args.save_order_log and self.total_iter % self.args.update_reg_interval == 0:
             if not hasattr(self, 'order_log'):
                 self.order_log = open('%s/order_log.txt' % self.logger.log_path, 'w+')
@@ -453,21 +444,30 @@ class Pruner(MetaPruner):
 
                 # log print
                 if total_iter % self.args.print_interval == 0:
-                    w_abs_sum = 0
-                    w_num_sum = 0
-                    cnt_m = 0
-                    for _, m in self.model.named_modules():
-                        if isinstance(m, nn.Conv2d):
-                            cnt_m += 1
-                            w_abs_sum += m.weight.abs().sum()
-                            w_num_sum += m.weight.numel()
+                    # check BN stats
+                    if self.args.verbose:
+                        for name, m in self.model.named_modules():
+                            if isinstance(m, nn.BatchNorm2d):
+                                # get the associating conv layer of this BN layer
+                                ix = self.all_layers.index(name)
+                                for k in range(ix-1, -1, -1):
+                                    if self.all_layers[k] in self.layers:
+                                        last_conv = self.all_layers[k]
+                                        break
+                                mask_ = [0] * m.weight.data.size(0)
+                                for i in self.kept_wg[last_conv]:
+                                    mask_[i] = 1
+                                wstr = ' '.join(['%.3f (%s)' % (x, y) for x, y in zip(m.weight.data, mask_)])
+                                bstr = ' '.join(['%.3f (%s)' % (x, y) for x, y in zip(m.bias.data, mask_)])
+                                logstr = f'{last_conv} BN weight: {wstr}\nBN bias: {bstr}'
+                                self.logprint(logstr)
 
+                    # check train acc
                     _, predicted = y_.max(1)
                     correct = predicted.eq(targets).sum().item()
                     train_acc = correct / targets.size(0)
-                    self.logprint("After optim update, ave_abs_weight: %.10f current_train_loss: %.4f current_train_acc: %.4f" %
-                        (w_abs_sum / w_num_sum, loss.item(), train_acc))
-                
+                    self.logprint("After optim update current_train_loss: %.4f current_train_acc: %.4f" % (loss.item(), train_acc))
+                            
                 if self.args.__dict__.get('AdaReg_only_picking') and self.all_layer_finish_pick:
                     self.logprint("GReg-2 just finished picking for all layers. Resume original model and switch to GReg-1. Iter = %d" % total_iter)
                     

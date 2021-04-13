@@ -58,10 +58,11 @@ class MetaPruner:
         self.criterion = passer.criterion
         self.save = passer.save
         self.is_single_branch = passer.is_single_branch
+
         self.learnable_layers = (nn.Conv2d, nn.Linear) # Note: for now, we only focus on weights in Conv and FC modules, no BN.
-        
-        self.layers = OrderedDict()
-        self._register_layers()
+        self.layers = OrderedDict() # learnable layers
+        self.all_layers = [] # all layers
+        self._register_layers() # register learnable layers
 
         arch = self.args.arch
         if arch.startswith('resnet'):
@@ -104,6 +105,7 @@ class MetaPruner:
         self._max_len_name = 0
         layer_shape = {}
         for name, m in self.model.named_modules():
+            self.all_layers += [name]
             if isinstance(m, self.learnable_layers):
                 if "downsample" not in name:
                     ix += 1

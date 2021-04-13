@@ -115,6 +115,7 @@ parser.add_argument('--init', type=str, default='default', help="weight initiali
 parser.add_argument('--activation', type=str, default='relu', help="activation function", choices=['relu', 'leaky_relu', 'linear', 'tanh', 'sigmoid'])
 parser.add_argument('--lr_AI', type=float, default=0.001, help="lr in approximate_isometry_optimize")
 parser.add_argument('--solver', type=str, default='SGD')
+parser.add_argument('--verbose', action="store_true", help='if true, print debug logs')
 
 # GReg method related (default setting is for ImageNet):
 parser.add_argument('--batch_size_prune', type=int, default=64)

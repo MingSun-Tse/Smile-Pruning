@@ -92,7 +92,6 @@ def orth_regularization_v3(w, pruned_wg):
     identity = torch.eye(w_.size(0)).cuda()
     for x in pruned_wg:
         identity[x, x] = 0
-    print(identity)
     loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
     # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
     return loss

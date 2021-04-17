@@ -83,7 +83,7 @@ class MetaPruner:
     def _pick_pruned(self, w_abs, pr, mode="min"):
         if pr == 0:
             return []
-        w_abs_list = w_abs.flatten()
+        w_abs_list = w_abs # .flatten()
         n_wg = len(w_abs_list)
         n_pruned = min(ceil(pr * n_wg), n_wg - 1) # do not prune all
         if mode == "rand":
@@ -281,11 +281,12 @@ class MetaPruner:
                         score = m.weight.abs().flatten()
                     else:
                         raise NotImplementedError
+
                     self.pruned_wg[name] = self._pick_pruned(score, self.pr[name], self.args.pick_pruned)
-                    self.kept_wg[name] = [i for i in range(len(score)) if i not in self.pruned_wg[name]]
+                    self.kept_wg[name] = set(range(len(score))) - set(self.pruned_wg[name])
                     format_str = "[%{}d] %{}s -- got pruned wg by L1 sorting (%s), pr %s".format(self._max_len_ix, self._max_len_name)
                     logtmp = format_str % (self.layers[name].layer_index, name, self.args.pick_pruned, self.pr[name])
-                    
+
                     # compare the pruned weights picked by L1-sorting vs. other criterion which provides the base_pr_model (e.g., OBD)
                     if self.args.base_pr_model:
                         intersection = [x for x in self.pruned_wg_pr_model[name] if x in self.pruned_wg[name]]

@@ -3,9 +3,10 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from .reinit_model import reinit_model, orth_regularization, orth_regularization_v3, deconv_orth_dist
+from .reinit_model import reinit_model, orth_regularization, orth_regularization_v3, orth_regularization_v4, deconv_orth_dist
 from utils import plot_weights_heatmap
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 pjoin = os.path.join
 
 class Pruner(MetaPruner):
@@ -60,6 +61,14 @@ class Pruner(MetaPruner):
                 self.original_w_mag[name] = m.weight.abs().mean().item()
                 kept_wg_L1 = [i for i in range(n_wg) if i not in self.pruned_wg_L1[name]]
                 self.original_kept_w_mag[name] = w_abs[kept_wg_L1].mean().item()
+
+        # init original_column_gram
+        self.original_column_gram = OrderedDict()
+        for name, m in self.model.named_modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+                w = m.weight.data
+                w = w.view(w.size(0), -1)
+                self.original_column_gram[name] = w.t() @ w
 
     def _pick_pruned_wg(self, w, pr):
         if pr == 0:
@@ -454,9 +463,11 @@ class Pruner(MetaPruner):
                                 else:
                                     loss_opp += deconv_orth_dist(module.weight)
                             elif self.args.opp_scheme == 2:
-                                orth_regularization(module.weight, transpose=self.args.transpose)
+                                loss_opp = orth_regularization(module.weight, transpose=self.args.transpose)
                             elif self.args.opp_scheme == 3:
-                                orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
+                                loss_opp = orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
+                            elif self.args.opp_scheme == 4:
+                                loss_opp = orth_regularization_v4(module.weight, self.original_column_gram[name], pruned_wg=self.pruned_wg[name])
                             else:
                                 raise NotImplementedError
 

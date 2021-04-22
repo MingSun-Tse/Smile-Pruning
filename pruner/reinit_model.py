@@ -105,3 +105,17 @@ def deconv_orth_dist(kernel, stride = 2, padding = 1):
     ct = int(np.floor(output.shape[-1]/2))
     target[:,:,ct,ct] = torch.eye(o_c).cuda()
     return torch.norm( output - target )
+
+def orth_regularization_v4(w, original_column_gram, pruned_wg):
+    # row: orthogonal
+    w_ = w.view(w.size(0), -1)
+    identity = torch.eye(w_.size(0)).cuda()
+    for x in pruned_wg:
+        identity[x, x] = 0
+    loss1 = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
+    
+    # column: maintain energy
+    loss2 = nn.MSELoss()(torch.matmul(w_.t(), w_), original_column_gram)
+    # print(f'loss row    {loss1:.4f}')
+    # print(f'loss column {loss2:.4f}')
+    return loss1 + loss2

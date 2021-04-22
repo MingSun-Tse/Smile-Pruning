@@ -283,7 +283,7 @@ class MetaPruner:
                         raise NotImplementedError
 
                     self.pruned_wg[name] = self._pick_pruned(score, self.pr[name], self.args.pick_pruned)
-                    self.kept_wg[name] = set(range(len(score))) - set(self.pruned_wg[name])
+                    self.kept_wg[name] = list(set(range(len(score))) - set(self.pruned_wg[name]))
                     format_str = "[%{}d] %{}s -- got pruned wg by L1 sorting (%s), pr %s".format(self._max_len_ix, self._max_len_name)
                     logtmp = format_str % (self.layers[name].layer_index, name, self.args.pick_pruned, self.pr[name])
 

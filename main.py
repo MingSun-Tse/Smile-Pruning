@@ -370,6 +370,8 @@ def main_worker(gpu, ngpus_per_node, args):
     if args.reinit:
         mask = pruner.mask if args.wg == 'weight' else None
         model = reinit_model(model, args=args, mask=mask, print=logprint)
+        acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
+        accprint(f"Acc1 {acc1:.4f} Acc5 {acc5:.4f} Loss_test {loss_test:.4f} -- after reiniting the just pruned model")
 
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:

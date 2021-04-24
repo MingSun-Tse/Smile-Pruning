@@ -463,11 +463,16 @@ class Pruner(MetaPruner):
                                 else:
                                     loss_opp += deconv_orth_dist(module.weight)
                             elif self.args.opp_scheme == 2:
-                                loss_opp = orth_regularization(module.weight, transpose=self.args.transpose)
+                                loss_opp += orth_regularization(module.weight, transpose=self.args.transpose)
                             elif self.args.opp_scheme == 3:
-                                loss_opp = orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
+                                if self.pr[name] > 0:
+                                    loss_opp += orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
                             elif self.args.opp_scheme == 4:
-                                loss_opp = orth_regularization_v4(module.weight, self.original_column_gram[name], pruned_wg=self.pruned_wg[name])
+                                if self.pr[name] > 0:
+                                    loss1, loss2 = orth_regularization_v4(module.weight, self.original_column_gram[name], pruned_wg=self.pruned_wg[name])
+                                    loss_opp += loss1 + loss2
+                                    if self.total_iter % self.args.print_interval == 0:
+                                        self.logprint(f'{name} [pr {self.pr[name]}] -- loss row {loss1:.8f} loss column {loss2:.8f}')
                             else:
                                 raise NotImplementedError
 

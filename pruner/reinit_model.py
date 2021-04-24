@@ -116,6 +116,4 @@ def orth_regularization_v4(w, original_column_gram, pruned_wg):
     
     # column: maintain energy
     loss2 = nn.MSELoss()(torch.matmul(w_.t(), w_), original_column_gram)
-    # print(f'loss row    {loss1:.4f}')
-    # print(f'loss column {loss2:.4f}')
-    return loss1 + loss2
+    return loss1, loss2

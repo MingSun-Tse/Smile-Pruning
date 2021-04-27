@@ -103,7 +103,7 @@ def main_worker(gpu, ngpus_per_node, args):
     num_classes = num_classes_dict[args.dataset]
     img_size = img_size_dict[args.dataset]
     num_channels = 1 if args.dataset == 'mnist' else 3
-    if args.dataset in ["imagenet", "imagenet_subset_200"]:
+    if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
         if args.pretrained:
             logprint("=> using pre-trained model '{}'".format(args.arch))
             model = models.__dict__[args.arch](num_classes=num_classes, pretrained=True)

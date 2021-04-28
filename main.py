@@ -87,6 +87,54 @@ def main_worker(gpu, ngpus_per_node, args):
     global best_acc1, best_acc1_epoch
     args.gpu = gpu
 
+    # Data loading code
+    train_sampler = None
+    if args.dataset not in ['imagenet', 'imagenet_subset_200']:
+        loader = Data(args)
+        train_loader = loader.train_loader
+        val_loader = loader.test_loader
+    else:   
+        traindir = os.path.join(args.data_path, args.dataset, 'train')
+        folder = 'val3' if args.debug else 'val' # @mst: val3 is a tiny version of val, to accelerate test in debugging
+        valdir = os.path.join(args.data_path, args.dataset, folder)
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])
+        transforms_train = transforms.Compose([
+                    transforms.RandomResizedCrop(224),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.ToTensor(),
+                    normalize])
+        transforms_val = transforms.Compose([
+                    transforms.Resize(256),
+                    transforms.CenterCrop(224),
+                    transforms.ToTensor(),
+                    normalize])
+
+        if args.use_lmdb:
+            lmdb_path_train = traindir + '/lmdb'
+            lmdb_path_val = valdir + '/lmdb'
+            assert os.path.exists(lmdb_path_train) and os.path.exists(lmdb_path_val)
+            logprint(f'Loading data in LMDB format: "{lmdb_path_train}" and "{lmdb_path_val}"')
+            train_dataset = Dataset_lmdb_batch(lmdb_path_train, transforms_train)
+            val_dataset = Dataset_lmdb_batch(lmdb_path_val, transforms_val)
+        else:
+            train_dataset = datasets.ImageFolder(traindir, transforms_train)
+            val_dataset = datasets.ImageFolder(valdir, transforms_val)
+
+        if args.distributed:
+            train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
+
+        train_loader = torch.utils.data.DataLoader(
+            train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+            num_workers=args.workers, pin_memory=True, sampler=train_sampler)
+
+        val_loader = torch.utils.data.DataLoader(
+            val_dataset, batch_size=args.batch_size, shuffle=False,
+            num_workers=args.workers, pin_memory=True)
+
+    # define loss function (criterion) and optimizer
+    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    
     if args.gpu is not None:
         logprint("Use GPU: {} for training".format(args.gpu))
 
@@ -162,13 +210,14 @@ def main_worker(gpu, ngpus_per_node, args):
         if 'model' in ckpt:
             model = ckpt['model']
         model.load_state_dict(ckpt['state_dict'])
-        logprint("==> Load pretrained model successfully: '%s'" % args.base_model_path)
+        logstr = f"==> Load pretrained model successfully: '{args.base_model_path}'"
+        if args.test_pretrained:
+            acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
+            logstr += f" Its accuracy {acc1:.4f}"
+        logprint(logstr)
         
     # @mst: print base model arch
     netprint(model, comment='base model arch')
-
-    # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                 momentum=args.momentum,
@@ -200,51 +249,6 @@ def main_worker(gpu, ngpus_per_node, args):
             logprint("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
-
-    # Data loading code
-    train_sampler = None
-    if args.dataset not in ['imagenet', 'imagenet_subset_200']:
-        loader = Data(args)
-        train_loader = loader.train_loader
-        val_loader = loader.test_loader
-    else:   
-        traindir = os.path.join(args.data_path, args.dataset, 'train')
-        folder = 'val3' if args.debug else 'val' # @mst: val3 is a tiny version of val, to accelerate test in debugging
-        valdir = os.path.join(args.data_path, args.dataset, folder)
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                        std=[0.229, 0.224, 0.225])
-        transforms_train = transforms.Compose([
-                    transforms.RandomResizedCrop(224),
-                    transforms.RandomHorizontalFlip(),
-                    transforms.ToTensor(),
-                    normalize])
-        transforms_val = transforms.Compose([
-                    transforms.Resize(256),
-                    transforms.CenterCrop(224),
-                    transforms.ToTensor(),
-                    normalize])
-
-        if args.use_lmdb:
-            lmdb_path_train = traindir + '/lmdb'
-            lmdb_path_val = valdir + '/lmdb'
-            assert os.path.exists(lmdb_path_train) and os.path.exists(lmdb_path_val)
-            logprint(f'Loading data in LMDB format: "{lmdb_path_train}" and "{lmdb_path_val}"')
-            train_dataset = Dataset_lmdb_batch(lmdb_path_train, transforms_train)
-            val_dataset = Dataset_lmdb_batch(lmdb_path_val, transforms_val)
-        else:
-            train_dataset = datasets.ImageFolder(traindir, transforms_train)
-            val_dataset = datasets.ImageFolder(valdir, transforms_val)
-
-        if args.distributed:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(train_dataset)
-
-        train_loader = torch.utils.data.DataLoader(
-            train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-            num_workers=args.workers, pin_memory=True, sampler=train_sampler)
-
-        val_loader = torch.utils.data.DataLoader(
-            val_dataset, batch_size=args.batch_size, shuffle=False,
-            num_workers=args.workers, pin_memory=True)
 
     if args.evaluate:
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
@@ -289,8 +293,8 @@ def main_worker(gpu, ngpus_per_node, args):
                                                 weight_decay=args.weight_decay)
                 optimizer.load_state_dict(state['optimizer'])
                 args.start_epoch = state['epoch']
-                logprint("==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
-                        args.resume_path, args.start_epoch, prune_state))
+                logstr = "==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+                        args.resume_path, args.start_epoch, prune_state)
             else:
                 raise NotImplementedError
 
@@ -302,6 +306,7 @@ def main_worker(gpu, ngpus_per_node, args):
             prune_state = 'finetune'
             logprint("==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                     args.directly_ft_weights, args.start_epoch, prune_state))
+
             if 'mask' in state:
                 mask = state['mask']
                 apply_mask_forward(model)
@@ -327,6 +332,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 mask = pruner.mask
                 apply_mask_forward(model)
                 logprint('==> Apply masks before finetuning to ensure the pruned weights are zero')
+            netprint(model, comment='model that was just pruned')
             # ***********************************************************
 
             # get model statistics of the pruned model
@@ -341,15 +347,15 @@ def main_worker(gpu, ngpus_per_node, args):
             logprint("==> reduction ratio -- params: {:>5.2f}% (compression ratio {:>.2f}x), flops: {:>5.2f}% (speedup ratio {:>.2f}x)".format(ratio_param*100, compression_ratio, ratio_flops*100, speedup_ratio))
         
             # test the just pruned model
-            netprint(model, comment='model that was just pruned')
             t1 = time.time()
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args) # test set
-            if args.dataset in ['imagenet']: # too costly, not test
-                acc1_train, acc5_train, loss_train = -1, -1, -1
-            else:
-                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std)  # train set
-            accprint("Acc1 %.4f Acc5 %.4f Loss_test %.4f | Acc1_train %.4f Acc5_train %.4f Loss_train %.4f | (test_time %.2fs) Just got pruned model, about to finetune" % 
-                (acc1, acc5, loss_test, acc1_train, acc5_train, loss_train, time.time()-t1))
+            logstr = []
+            logstr += ["Acc1 %.4f Acc5 %.4f Loss_test %.4f" % (acc1, acc5, loss_test)]
+            if args.dataset not in ['imagenet']: # too costly, not test
+                acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std) # train set
+                logstr += ["Acc1_train %.4f Acc5_train %.4f Loss_train %.4f" % (acc1_train, acc5_train, loss_train)]
+            logstr += ["(test_time %.2fs) Just got pruned model, about to finetune" %  (time.time() - t1)]
+            accprint(' | '.join(logstr))
             
             # save the just pruned model
             state = {'arch': args.arch,

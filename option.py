@@ -83,6 +83,7 @@ parser.add_argument('--params_json', type=str, default='', help='experiment para
 parser.add_argument('--resume_path', type=str, default=None, help="supposed to replace the original 'resume' feature")
 parser.add_argument('--directly_ft_weights', type=str, default=None, help="the path to a pretrained model")
 parser.add_argument('--base_model_path', type=str, default=None, help="the path to the unpruned base model")
+parser.add_argument('--test_pretrained', action="store_true", help='test the pretrained model')
 parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 

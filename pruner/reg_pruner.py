@@ -497,9 +497,10 @@ class Pruner(MetaPruner):
                 
                 # change prune state
                 if self.prune_state == "stabilize_reg" and total_iter - self.iter_stabilize_reg == self.args.stabilize_reg_interval:
+                    model_before_removing_weights = copy.deepcopy(self.model)
                     self._prune_and_build_new_model() 
                     self.logprint("'stabilize_reg' is done. Pruned, go to 'finetune'. Iter = %d" % total_iter)
-                    return copy.deepcopy(self.model)
+                    return model_before_removing_weights, copy.deepcopy(self.model)
 
                 if total_iter % self.args.print_interval == 0:
                     t2 = time.time()

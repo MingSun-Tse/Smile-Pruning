@@ -334,6 +334,8 @@ def main_worker(gpu, ngpus_per_node, args):
             # key pruning function
             pruner = pruner_dict[args.method].Pruner(model, args, logger, passer)
             model = pruner.prune() # get the pruned model
+            if args.method in ['GReg-1', 'GReg-2']:
+                model_before_removing_weights, model = model
             if args.wg == 'weight':
                 mask = pruner.mask
                 apply_mask_forward(model)
@@ -378,8 +380,12 @@ def main_worker(gpu, ngpus_per_node, args):
             save_model(state, mark="just_finished_prune")
 
             if args.feat_analyze:
+                if args.method in ['GReg-1', 'GReg-2']:
+                    logprint('analyzing feature of conv/fc layers (after reg, before removing weights):')
+                    FeatureAnalyzer(model_before_removing_weights, val_loader, criterion=criterion, print=logprint)
                 logprint('analyzing feature of conv/fc layers (just finished pruning):')
                 FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
+                
     # ---
 
     # before finetuning, we may reinit the weights by some rule
@@ -394,8 +400,11 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:
+        if args.method in ['GReg-1', 'GReg-2']:
+            jsv, cn = get_jacobian_singular_values(model_before_removing_weights, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
+            logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f -- model_before_removing_weights' % 
+                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
         jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-        print(np.sort(cn))
         logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f' % 
             (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 

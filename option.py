@@ -134,6 +134,7 @@ parser.add_argument('--opp_scheme', type=int, default=1, help='scheme id, used t
 parser.add_argument('--lw_opp', type=float, default=0.001)
 parser.add_argument('--reinit_interval', type=int, default=100000000)
 parser.add_argument('--no_transpose', dest='transpose', action='store_false', default=True, help='not use transpose for orth_regularization')
+parser.add_argument('--feat_analyze', action="store_true", help='analyze features of conv/fc layers')
 
 args = parser.parse_args()
 args_tmp = {}

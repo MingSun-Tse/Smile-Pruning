@@ -37,6 +37,7 @@ from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
 from pruner.reinit_model import reinit_model
+from pruner.feat_analyze import FeatureAnalyzer
 from option import args
 pjoin = os.path.join
 
@@ -134,7 +135,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
-    
+
     if args.gpu is not None:
         logprint("Use GPU: {} for training".format(args.gpu))
 
@@ -213,7 +214,7 @@ def main_worker(gpu, ngpus_per_node, args):
         logstr = f"==> Load pretrained model successfully: '{args.base_model_path}'"
         if args.test_pretrained:
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-            logstr += f" Its accuracy {acc1:.4f}"
+            logstr += f". Its accuracy: {acc1:.4f}"
         logprint(logstr)
         
     # @mst: print base model arch
@@ -313,6 +314,11 @@ def main_worker(gpu, ngpus_per_node, args):
                 logprint('==> Mask restored')
 
         if prune_state in ['prune']:
+            # feature analyze
+            if args.feat_analyze:
+                logprint('analyzing feature of conv/fc layers (before pruning):')
+                FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
+
             class passer: pass # to pass arguments
             passer.test = validate
             passer.finetune = finetune
@@ -370,6 +376,10 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.wg == 'weight':
                 state['mask'] = mask
             save_model(state, mark="just_finished_prune")
+
+            if args.feat_analyze:
+                logprint('analyzing feature of conv/fc layers (just finished pruning):')
+                FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
     # ---
 
     # before finetuning, we may reinit the weights by some rule
@@ -378,11 +388,15 @@ def main_worker(gpu, ngpus_per_node, args):
         model = reinit_model(model, args=args, mask=mask, print=logprint)
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
         accprint(f"Acc1 {acc1:.4f} Acc5 {acc5:.4f} Loss_test {loss_test:.4f} -- after reiniting the just pruned model")
+        if args.feat_analyze:
+            logprint('analyzing feature of conv/fc layers (after reinit):')
+            FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
 
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:
         jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-        logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
+        print(np.sort(cn))
+        logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f' % 
             (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 
     # finetune
@@ -421,7 +435,7 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_loop:
             jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-            logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number %.4f' % 
+            logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f' % 
                 (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 
         # @mst: check weights magnitude during finetune

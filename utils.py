@@ -984,10 +984,10 @@ def get_jacobian_singular_values(model, data_loader, num_classes, n_loop=20, pri
             u, s, v = torch.svd(jacobian) # u: [batch_size, num_channels*input_width*input_height, num_classes], s: [batch_size, num_classes], v: [batch_size, num_channels*input_width*input_height, num_classes]
             s = s.data.cpu().numpy()
             jsv.append(s)
-            condition_number.append(s.max() / s.min())
+            condition_number.append(s.max(axis=1) / s.min(axis=1))
             print_func('[%3d/%3d] calculating Jacobian...' % (i, len(data_loader)))
     jsv = np.concatenate(jsv)
-    condition_number = np.array(condition_number)
+    condition_number = np.concatenate(condition_number)
     return jsv, condition_number
 
 def approximate_entropy(X, num_bins=10, esp=1e-30):

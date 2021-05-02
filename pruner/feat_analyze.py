@@ -77,6 +77,3 @@ class FeatureAnalyzer():
         for k, v in self.feat_mean.items():
             grad = self.grad_mean[k]
             self.print(f'{k.rjust(max_key_len)} -- feat_mean {v.avg:.4f} grad_mean {grad.avg:.10f}')
-
-
-

@@ -88,7 +88,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'GReg-1', 'GReg-2', 'Oracle', 'OPP'], 
+parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
     help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--skip_layers', type=str, default="", help='layer id to skip when pruning')

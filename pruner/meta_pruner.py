@@ -299,7 +299,7 @@ class MetaPruner:
             kept_chl = self.kept_wg[name]
             next_learnable_layer = self._next_learnable_layer(self.model, name, m)
             if not next_learnable_layer:
-                kept_filter = range(m.weight.size(0))
+                kept_filter = list(range(m.weight.size(0)))
             else:
                 kept_filter = self.kept_wg[next_learnable_layer]
         
@@ -307,7 +307,7 @@ class MetaPruner:
             kept_filter = self.kept_wg[name]
             prev_learnable_layer = self._prev_learnable_layer(self.model, name, m)
             if not prev_learnable_layer:
-                kept_chl = range(m.weight.size(1))
+                kept_chl = list(range(m.weight.size(1)))
             else:
                 if self.layers[name].layer_type == self.layers[prev_learnable_layer].layer_type:
                     kept_chl = self.kept_wg[prev_learnable_layer]
@@ -333,12 +333,13 @@ class MetaPruner:
         for name, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):
                 kept_filter, kept_chl = self._get_kept_filter_channel(m, name)
+                print(f'{name} kept_filter: {kept_filter} kept_chl: {kept_chl}')
                 
                 # copy weight and bias
                 bias = False if isinstance(m.bias, type(None)) else True
                 if isinstance(m, nn.Conv2d):
                     kept_weights = m.weight.data[kept_filter][:, kept_chl, :, :]
-                    new_layer = nn.Conv2d(kept_weights.size(1), kept_weights.size(0), m.kernel_size,
+                    new_layer = nn.Conv2d(len(kept_chl), len(kept_filter), m.kernel_size,
                                     m.stride, m.padding, m.dilation, m.groups, bias).cuda()
                 elif isinstance(m, nn.Linear):
                     kept_weights = m.weight.data[kept_filter][:, kept_chl]
@@ -381,7 +382,7 @@ class MetaPruner:
             logtmp += '%s:%d, ' % (ix, num)
         logtmp = logtmp[:-2] + '}'
         self.logprint('n_filter of pruned model: %s' % logtmp)
-    
+
     def _get_masks(self):
         '''Get masks for unstructured pruning
         '''

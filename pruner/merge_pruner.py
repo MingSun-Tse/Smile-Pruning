@@ -116,13 +116,10 @@ class Pruner(MetaPruner):
         loss_reg = 0
         for n, m in self.model.named_modules():
             if n in self.wg_clusters:
-                w = m.weight
-                w = w.view(w.size(0), -1)
                 for label, wg_ixs in self.wg_clusters[n].items():
                     if len(wg_ixs) > 1:
-                        center = w[wg_ixs].mean(dim=0) # wg center, wg is filter here
-                        for ix in wg_ixs:
-                            loss_reg += F.l1_loss(w[ix], center)
+                        center = m.weight[wg_ixs].mean(dim=0, keepdim=True) # [1,C,H,W], wg center, wg is filter here
+                        loss_reg += F.l1_loss(m.weight[wg_ixs], center.detach())
         return loss_reg
 
     def _resume_prune_status(self, ckpt_path):
@@ -211,11 +208,12 @@ class Pruner(MetaPruner):
                         self.iter_stabilize_reg = self.total_iter
                     
                 # normal training forward
-                loss_cls = self.criterion(y_, targets)
-                loss_reg = self._get_loss_reg(print_log=self.args.verbose)
-                loss = loss_cls + loss_reg * self.reg_multiplier
-                # loss = loss_cls
-                logtmp = f'loss_cls {loss_cls:.4f} loss_reg (*{self.reg_multiplier}) {loss_reg:.4f}'
+                loss = self.criterion(y_, targets)
+                logtmp = f'loss_cls {loss:.4f}'
+                if self.total_iter % self.args.interval_apply_cluster_reg == 0:
+                    loss_reg = self._get_loss_reg(print_log=self.args.verbose)
+                    loss += loss_reg * self.reg_multiplier
+                    logtmp += f' loss_reg (*{self.reg_multiplier}) {loss_reg:.4f}'
 
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:
@@ -263,7 +261,6 @@ class Pruner(MetaPruner):
                     self._prune_and_build_new_model() 
                     acc1, *_ = self.test(self.model)
                     self.logprint(f"Model is pruned and a new model is built. Acc1 {acc1:.4f}")
-                    exit()
                     return copy.deepcopy(self.model)
 
                 if total_iter % self.args.print_interval == 0:

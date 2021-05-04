@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from utils import plot_weights_heatmap
+from utils import plot_weights_heatmap, Timer
 import matplotlib.pyplot as plt
 pjoin = os.path.join
 
@@ -402,8 +402,9 @@ class Pruner(MetaPruner):
             self.logprint("Resume model successfully: '{}'. Iter = {}. prune_state = {}".format(
                         self.args.resume_path, self.total_iter, self.prune_state))
 
-        t1 = time.time()
         acc1 = acc5 = 0
+        total_iter_reg = self.args.reg_upper_limit / self.args.reg_granularity_prune * self.args.update_reg_interval + self.args.stabilize_reg_interval
+        timer = Timer(total_iter_reg / self.args.print_interval)
         while True:
             for _, (inputs, targets) in enumerate(self.train_loader):
                 inputs, targets = inputs.cuda(), targets.cuda()
@@ -520,10 +521,7 @@ class Pruner(MetaPruner):
                     return model_before_removing_weights, copy.deepcopy(self.model)
 
                 if total_iter % self.args.print_interval == 0:
-                    t2 = time.time()
-                    total_time = t2 - t1
-                    self.logprint("speed = %.4f iter/s" % (self.args.print_interval / total_time))
-                    t1 = t2
+                    self.logprint(f"predicted_finish_time of reg: {timer()}")
 
     def _plot_mag_ratio(self, w_abs, name):
         fig, ax = plt.subplots()

@@ -497,23 +497,23 @@ class Pruner(MetaPruner):
                 
                 # change prune state
                 if self.prune_state == "stabilize_reg" and total_iter - self.iter_stabilize_reg == self.args.stabilize_reg_interval:
-                    # --- check accuracy to make sure '_prune_and_build_new_model' works normally
-                    # checked. works normally!
-                    for name, m in self.model.named_modules():
-                        if isinstance(m, self.learnable_layers):
-                            pruned_filter = self.pruned_wg[name]
-                            m.weight.data[pruned_filter] *= 0
-                            next_bn = self._next_bn(self.model, m)
-                        elif isinstance(m, nn.BatchNorm2d) and m == next_bn:
-                            m.weight.data[pruned_filter] *= 0
-                            m.bias.data[pruned_filter] *= 0
+                    # # --- check accuracy to make sure '_prune_and_build_new_model' works normally
+                    # # checked. works normally!
+                    # for name, m in self.model.named_modules():
+                    #     if isinstance(m, self.learnable_layers):
+                    #         pruned_filter = self.pruned_wg[name]
+                    #         m.weight.data[pruned_filter] *= 0
+                    #         next_bn = self._next_bn(self.model, m)
+                    #     elif isinstance(m, nn.BatchNorm2d) and m == next_bn:
+                    #         m.weight.data[pruned_filter] *= 0
+                    #         m.bias.data[pruned_filter] *= 0
 
-                    acc1_before, *_ = self.test(self.model)
-                    self._prune_and_build_new_model()
-                    acc1_after, *_ = self.test(self.model)
-                    print(acc1_before, acc1_after)
-                    exit()
-                    # ---
+                    # acc1_before, *_ = self.test(self.model)
+                    # self._prune_and_build_new_model()
+                    # acc1_after, *_ = self.test(self.model)
+                    # print(acc1_before, acc1_after)
+                    # exit()
+                    # # ---
                     model_before_removing_weights = copy.deepcopy(self.model)
                     self._prune_and_build_new_model()
                     self.logprint("'stabilize_reg' is done. Pruned, go to 'finetune'. Iter = %d" % total_iter)

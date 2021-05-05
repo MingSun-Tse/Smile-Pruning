@@ -241,21 +241,23 @@ class Pruner(MetaPruner):
                     
                 # normal training forward
                 loss = self.criterion(y_, targets)
-                logtmp = f'loss_cls {loss:.4f}'
-                if self.total_iter % self.args.interval_apply_cluster_reg == 0:
-                    loss_reg = self._get_loss_reg(print_log=self.args.verbose)
-                    loss += loss_reg * self.reg_multiplier
-                    logtmp += f' loss_reg (*{self.reg_multiplier}) {loss_reg:.4f}'
 
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:
-                    self.logprint(logtmp)
+                    self.logprint(f'loss_cls {loss:.4f}')
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 
                 # after backward but before update, apply reg to the grad
                 self.optimizer.step()
+
+                # sub-gradient descent
+                for _ in range(5):
+                    self.optimizer.zero_grad()
+                    loss_reg = self._get_loss_reg(print_log=self.args.verbose) * 10
+                    loss_reg.backward()
+                    self.optimizer.step()
 
                 # log print
                 if total_iter % self.args.print_interval == 0:

@@ -21,67 +21,110 @@ class Pruner(MetaPruner):
         # init: get pruned weight groups
         self.prune_state = "update_reg"
         self.reg_multiplier = 0
-        self._get_kept_wg()
+        self._get_kept_wg(clustering=args.clustering)
         self.next_bn = {}
         for n, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):
                 next_bn = self._next_bn(self.model, m)
                 self.next_bn[n] = next_bn
 
-    def _get_kept_wg(self, clustering='kmeans'):
+    def _get_kept_wg(self, clustering):
         '''Get the pruned and kept weight groups (i.e., filters in this case). 
         And, for the pruned weight groups, get the replacing mapping.
         '''
         self.wg_clusters = {}
-        for n, m in self.model.named_modules():
-            if isinstance(m, self.learnable_layers):
-                self.pruned_wg[n] = []
-                n_filter = m.weight.size(0)
-                w = m.weight.data.view(n_filter, -1)
-                
-                # weight group clustering
-                if self.pr[n] > 0:
-                    n_pruned = min(math.ceil(self.pr[n] * n_filter), n_filter - 1) # at least, keep one wg
-                    n_kept = n_filter - n_pruned
-                    if clustering == 'kmeans':
-                        kmeans = KMeans(n_clusters=n_kept, random_state=0).fit(w.cpu().data.numpy())
-                        labels = kmeans.labels_
-                    elif clustering == 'random':
-                        labels = []
-                        for i in range(n_filter):
-                            labels += [torch.randint(n_kept, (1,)).item()]
+        if clustering == 'l1':
+            self._get_kept_wg_L1() # update self.kept_wg and self.pruned_wg
+            for n, m in self.model.named_modules():
+                if isinstance(m, self.learnable_layers):
                     self.wg_clusters[n] = {}
-                    for wg_ix, label in enumerate(labels):
-                        if label in self.wg_clusters[n]:
-                            self.wg_clusters[n][label] += [wg_ix]
-                            self.pruned_wg[n] += [wg_ix] # will prune all the filters except the 1st one in each cluster
-                        else:
-                            self.wg_clusters[n][label] = [wg_ix]
-                    self.logprint(f'{n} -- wg_clusters: {self.wg_clusters[n]} (n_kept/n_filter = {n_kept}/{n_filter})')
-                else:
-                    self.wg_clusters[n] = {i:[i] for i in range(n_filter)}
-                
-                self.kept_wg[n] = [x for x in range(n_filter) if x not in self.pruned_wg[n]]
+                    kept_wg, pruned_wg = self.kept_wg[n], self.pruned_wg[n]
+                    n_kept, n_filter = len(kept_wg), len(kept_wg) + len(pruned_wg)
+                    # for kept wgs, each wg (filter here) makes a cluster alone
+                    for i in range(n_kept):
+                        self.wg_clusters[n][i] = [kept_wg[i]]
+                    
+                    # for pruned wgs, assign each to a cluster based on affinity
+                    for i in pruned_wg:
+                        # find the closest wg in kept_wg
+                        min_dist = 1e10
+                        for j in kept_wg:
+                            dist = F.l1_loss(m.weight.data[i], m.weight.data[j]).item() # this metric may need improvement
+                            if dist < min_dist:
+                                closest_wg = j
+                                min_dist = dist
+                        closest_wg_ix = kept_wg.index(closest_wg)
+                        self.wg_clusters[n][closest_wg_ix] += [i]
+                    if self.pr[n] > 0:
+                        self.logprint(f'{n} -- wg_clusters: {self.wg_clusters[n]} (n_kept/n_filter = {n_kept}/{n_filter})')
+        else:
+            for n, m in self.model.named_modules():
+                if isinstance(m, self.learnable_layers):
+                    self.pruned_wg[n] = []
+                    n_filter = m.weight.size(0)
+                    w = m.weight.data.view(n_filter, -1)
+                    
+                    # weight group clustering
+                    if self.pr[n] > 0:
+                        n_pruned = min(math.ceil(self.pr[n] * n_filter), n_filter - 1) # at least, keep one wg
+                        n_kept = n_filter - n_pruned
+                        if clustering == 'kmeans':
+                            kmeans = KMeans(n_clusters=n_kept, random_state=0).fit(w.cpu().data.numpy())
+                            labels = kmeans.labels_
+                        elif clustering == 'random':
+                            labels = []
+                            for i in range(n_filter):
+                                labels += [torch.randint(n_kept, (1,)).item()]
+                        self.wg_clusters[n] = {}
+                        for wg_ix, label in enumerate(labels):
+                            if label in self.wg_clusters[n]:
+                                self.wg_clusters[n][label] += [wg_ix]
+                                self.pruned_wg[n] += [wg_ix] # will prune all the filters except the 1st one in each cluster
+                            else:
+                                self.wg_clusters[n][label] = [wg_ix]
+                        self.logprint(f'{n} -- wg_clusters: {self.wg_clusters[n]} (n_kept/n_filter = {n_kept}/{n_filter})')
+                    else:
+                        self.wg_clusters[n] = {i:[i] for i in range(n_filter)}
+                    self.kept_wg[n] = [x for x in range(n_filter) if x not in self.pruned_wg[n]]
 
     def _get_loss_reg(self, print_log=False):
+        metric = F.l1_loss
         loss_reg_w = loss_reg_bn = 0
         for n, m in self.model.named_modules():
             if n in self.wg_clusters:
-                bn = self.next_bn[n]
+                bias = False if isinstance(m.bias, type(None)) else True
+                next_bn = self.next_bn[n]
                 for _, wg_ixs in self.wg_clusters[n].items():
+                    # choose the 1st wg as center
                     if len(wg_ixs) > 1:
-                        center = m.weight[wg_ixs].mean(dim=0, keepdim=True) # [1,C,H,W], wg center, wg is filter here
-                        loss_reg_w += F.l1_loss(m.weight[wg_ixs], center)
-                        if bn:
-                            center = bn.weight[wg_ixs].mean(dim=0, keepdim=True) # [1], bn center
-                            loss_reg_bn += F.l1_loss(bn.weight[wg_ixs], center)
-                            center = bn.bias[wg_ixs].mean(dim=0, keepdim=True)
-                            loss_reg_bn += F.l1_loss(bn.bias[wg_ixs], center)
+                        loss_reg_w += metric( m.weight[wg_ixs[1:]], m.weight[wg_ixs[0]].unsqueeze(0).detach() )
+                        if bias:
+                            loss_reg_w += metric( m.bias[wg_ixs[1:]], m.bias[wg_ixs[0]].unsqueeze(0).detach() )
+                        if self.args.consider_bn and next_bn:
+                            loss_reg_bn += metric( next_bn.weight[wg_ixs[1:]], next_bn.weight[wg_ixs[0]].unsqueeze(0).detach() )
+                            loss_reg_bn += metric( next_bn.bias[  wg_ixs[1:]], next_bn.bias[  wg_ixs[0]].unsqueeze(0).detach() )
+
+                    # # choose the averaged wg as center 
+                    # if len(wg_ixs) > 1:
+                    #     center = m.weight[wg_ixs].mean(dim=0, keepdim=True) # [1,C,H,W], wg center, wg is filter here
+                    #     loss_reg_w += F.l1_loss(m.weight[wg_ixs], center)
+                    #     if bn:
+                    #         center = bn.weight[wg_ixs].mean(dim=0, keepdim=True) # [1], bn center
+                    #         loss_reg_bn += F.l1_loss(bn.weight[wg_ixs], center)
+                    #         center = bn.bias[wg_ixs].mean(dim=0, keepdim=True)
+                    #         loss_reg_bn += F.l1_loss(bn.bias[wg_ixs], center)
+
+        if self.args.consider_bn:
+            loss_reg = loss_reg_w + loss_reg_bn
+            logstr = f'loss_reg_w {loss_reg_w:.6f} loss_reg_bn {loss_reg_bn:.6f}'
+        else:
+            loss_reg = loss_reg_w
+            logstr = f'loss_reg_w {loss_reg_w:.6f}'
         
         if self.total_iter % self.args.print_interval == 0:
-            self.logprint(f'loss_reg_w {loss_reg_w:.6f} loss_reg_bn {loss_reg_bn:.6f}')
-        return loss_reg_w + loss_reg_bn
-
+            self.logprint(logstr)
+        return loss_reg
+    
     def _merge_channels(self):
         '''Merge channels in a filter.
         '''
@@ -180,17 +223,6 @@ class Pruner(MetaPruner):
                 inputs, targets = inputs.cuda(), targets.cuda()
                 self.total_iter += 1
                 total_iter = self.total_iter
-                
-                # test
-                if total_iter % self.args.test_interval == 0:
-                    acc1, acc5, *_ = self.test(self.model)
-                    self.accprint("Acc1 = %.4f Acc5 = %.4f Iter = %d (before update) [prune_state = %s, method = %s]" % 
-                        (acc1, acc5, total_iter, self.prune_state, self.args.method))
-                
-                # save model (save model before a batch starts)
-                if total_iter % self.args.save_interval == 0:
-                    self._save_model(acc1, acc5)
-                    self.logprint('Periodically save model done. Iter = {}'.format(total_iter))
                     
                 if total_iter % self.args.print_interval == 0:
                     self.logprint("")
@@ -231,7 +263,18 @@ class Pruner(MetaPruner):
                     correct = predicted.eq(targets).sum().item()
                     train_acc = correct / targets.size(0)
                     self.logprint("After optim update, current_train_loss: %.4f current_train_acc: %.4f" % (loss.item(), train_acc))
+
+                # test
+                if total_iter % self.args.test_interval == 0:
+                    acc1, acc5, *_ = self.test(self.model)
+                    self.accprint("Acc1 = %.4f Acc5 = %.4f Iter = %d (after update) [prune_state = %s, method = %s]" % 
+                        (acc1, acc5, total_iter, self.prune_state, self.args.method))
                 
+                # save model (save model before a batch starts)
+                if total_iter % self.args.save_interval == 0:
+                    self._save_model(acc1, acc5)
+                    self.logprint('Periodically save model done. Iter = {}'.format(total_iter))
+
                 # change prune state
                 if self.prune_state == "stabilize_reg" and total_iter - self.iter_stabilize_reg == self.args.stabilize_reg_interval:
                     acc1, *_ = self.test(self.model)

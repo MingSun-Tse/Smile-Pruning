@@ -21,7 +21,7 @@ class Pruner(MetaPruner):
         # init: get pruned weight groups
         self.prune_state = "update_reg"
         self.reg_multiplier = 0
-        self._get_kept_wg(clustering='random')
+        self._get_kept_wg()
         self.next_bn = {}
         for n, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):

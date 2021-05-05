@@ -16,52 +16,19 @@ class Pruner(MetaPruner):
         super(Pruner, self).__init__(model, args, logger, passer)
 
         # Reg related variables
-        self.reg = {}
-        self.delta_reg = {}
-        self.hist_mag_ratio = {}
-        self.n_update_reg = {}
-        self.iter_update_reg_finished = {}
-        self.iter_finish_pick = {}
         self.iter_stabilize_reg = math.inf
-        self.original_w_mag = {}
-        self.original_kept_w_mag = {}
-        self.ranking = {}
-        self.pruned_wg_L1 = {}
-        self.all_layer_finish_pick = False
-        self.w_abs = {}
-        self.mag_reg_log = {}
-        if self.args.__dict__.get('AdaReg_only_picking'): # AdaReg is the old name for GReg-2
-            self.original_model = copy.deepcopy(self.model)
         
         # init: get pruned weight groups
-        self.reg_multiplier = 0
-        self._get_kept_wg()
-
         self.prune_state = "update_reg"
-        for name, m in self.model.named_modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                shape = m.weight.data.shape
+        self.reg_multiplier = 0
+        self._get_kept_wg(clustering='random')
+        self.next_bn = {}
+        for n, m in self.model.named_modules():
+            if isinstance(m, self.learnable_layers):
+                next_bn = self._next_bn(self.model, m)
+                self.next_bn[n] = next_bn
 
-                # initialize reg
-                if self.args.wg == 'weight':
-                    self.reg[name] = torch.zeros_like(m.weight.data).flatten().cuda()
-                else:
-                    self.reg[name] = torch.zeros(shape[0], shape[1]).cuda() 
-                
-        # init original_column_gram
-        self.original_column_gram = OrderedDict()
-        for name, m in self.model.named_modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-                w = m.weight.data
-                w = w.view(w.size(0), -1)
-                self.original_column_gram[name] = w.t() @ w
-
-    def _cal_distance(self, w1, w2):
-        out = F.cosine_similarity(w1, w2, dim=0)
-        return out.item()
-        # cal_correlation(w.t(), coef=True) # can be replaced as cosine distance
-
-    def _get_kept_wg(self):
+    def _get_kept_wg(self, clustering='kmeans'):
         '''Get the pruned and kept weight groups (i.e., filters in this case). 
         And, for the pruned weight groups, get the replacing mapping.
         '''
@@ -76,9 +43,15 @@ class Pruner(MetaPruner):
                 if self.pr[n] > 0:
                     n_pruned = min(math.ceil(self.pr[n] * n_filter), n_filter - 1) # at least, keep one wg
                     n_kept = n_filter - n_pruned
-                    kmeans = KMeans(n_clusters=n_kept, random_state=0).fit(w.cpu().data.numpy())
+                    if clustering == 'kmeans':
+                        kmeans = KMeans(n_clusters=n_kept, random_state=0).fit(w.cpu().data.numpy())
+                        labels = kmeans.labels_
+                    elif clustering == 'random':
+                        labels = []
+                        for i in range(n_filter):
+                            labels += [torch.randint(n_kept, (1,)).item()]
                     self.wg_clusters[n] = {}
-                    for wg_ix, label in enumerate(kmeans.labels_):
+                    for wg_ix, label in enumerate(labels):
                         if label in self.wg_clusters[n]:
                             self.wg_clusters[n][label] += [wg_ix]
                             self.pruned_wg[n] += [wg_ix] # will prune all the filters except the 1st one in each cluster
@@ -90,6 +63,25 @@ class Pruner(MetaPruner):
                 
                 self.kept_wg[n] = [x for x in range(n_filter) if x not in self.pruned_wg[n]]
 
+    def _get_loss_reg(self, print_log=False):
+        loss_reg_w = loss_reg_bn = 0
+        for n, m in self.model.named_modules():
+            if n in self.wg_clusters:
+                bn = self.next_bn[n]
+                for _, wg_ixs in self.wg_clusters[n].items():
+                    if len(wg_ixs) > 1:
+                        center = m.weight[wg_ixs].mean(dim=0, keepdim=True) # [1,C,H,W], wg center, wg is filter here
+                        loss_reg_w += F.l1_loss(m.weight[wg_ixs], center)
+                        if bn:
+                            center = bn.weight[wg_ixs].mean(dim=0, keepdim=True) # [1], bn center
+                            loss_reg_bn += F.l1_loss(bn.weight[wg_ixs], center)
+                            center = bn.bias[wg_ixs].mean(dim=0, keepdim=True)
+                            loss_reg_bn += F.l1_loss(bn.bias[wg_ixs], center)
+        
+        if self.total_iter % self.args.print_interval == 0:
+            self.logprint(f'loss_reg_w {loss_reg_w:.6f} loss_reg_bn {loss_reg_bn:.6f}')
+        return loss_reg_w + loss_reg_bn
+
     def _merge_channels(self):
         '''Merge channels in a filter.
         '''
@@ -98,6 +90,9 @@ class Pruner(MetaPruner):
                 # zero out filters that are going to be pruned
                 pruned_filter = self.pruned_wg[name]
                 m.weight.data[pruned_filter] *= 0
+                bias = False if isinstance(m.bias, type(None)) else True
+                if bias:
+                    m.bias.data[pruned_filter] *= 0
                 next_bn = self._next_bn(self.model, m)
 
                 # for a filter, merge all the channels of the same cluster to the 1st channel
@@ -111,17 +106,27 @@ class Pruner(MetaPruner):
             elif isinstance(m, nn.BatchNorm2d) and m == next_bn:
                 m.weight.data[pruned_filter] *= 0
                 m.bias.data[pruned_filter] *= 0
-
-    def _get_loss_reg(self, print_log=False):
-        loss_reg = 0
-        for n, m in self.model.named_modules():
-            if n in self.wg_clusters:
-                for label, wg_ixs in self.wg_clusters[n].items():
-                    if len(wg_ixs) > 1:
-                        center = m.weight[wg_ixs].mean(dim=0, keepdim=True) # [1,C,H,W], wg center, wg is filter here
-                        loss_reg += F.l1_loss(m.weight[wg_ixs], center.detach())
-        return loss_reg
-
+    
+    def _share_weights_for_filters(self):
+        '''Explicitly make filters in the same cluster share weights, as well as the BN statistics.
+        '''
+        for name, m in self.model.named_modules():
+            if isinstance(m, self.learnable_layers):
+                for label, wg_ixs in self.wg_clusters[name].items():
+                    m.weight.data[wg_ixs] = m.weight.data[wg_ixs].mean(dim=0)
+                    bias = False if isinstance(m.bias, type(None)) else True
+                    if bias:
+                        m.bias.data[wg_ixs] = m.bias.data[wg_ixs].mean(dim=0)
+                next_bn = self._next_bn(self.model, m)
+                learnable_layer_name = name
+                
+            elif isinstance(m, nn.BatchNorm2d) and m == next_bn:
+                for label, wg_ixs in self.wg_clusters[learnable_layer_name].items():
+                    m.weight.data[wg_ixs] = m.weight.data[wg_ixs].mean(dim=0)
+                    m.bias.data[wg_ixs] = m.bias.data[wg_ixs].mean(dim=0)
+                    m.running_mean[wg_ixs] = m.running_mean[wg_ixs].mean(dim=0)
+                    m.running_var[wg_ixs] = m.running_var[wg_ixs].mean(dim=0)
+                        
     def _resume_prune_status(self, ckpt_path):
         state = torch.load(ckpt_path)
         self.model = state['model'].cuda()
@@ -134,8 +139,6 @@ class Pruner(MetaPruner):
         self.prune_state = state['prune_state']
         self.total_iter = state['iter']
         self.iter_stabilize_reg = state.get('iter_stabilize_reg', math.inf)
-        self.reg = state['reg']
-        self.hist_mag_ratio = state['hist_mag_ratio']
 
     def _save_model(self, acc1=0, acc5=0, mark=''):
         state = {'iter': self.total_iter,
@@ -147,8 +150,6 @@ class Pruner(MetaPruner):
                 'acc1': acc1,
                 'acc5': acc5,
                 'optimizer': self.optimizer.state_dict(),
-                'reg': self.reg,
-                'hist_mag_ratio': self.hist_mag_ratio,
                 'ExpID': self.logger.ExpID,
         }
         self.save(state, is_best=False, mark=mark)
@@ -169,7 +170,6 @@ class Pruner(MetaPruner):
             self.logprint("Resume model successfully: '{}'. Iter = {}. prune_state = {}".format(
                         self.args.resume_path, self.total_iter, self.prune_state))
 
-        t1 = time.time()
         acc1 = acc5 = 0
         epoch = 0
         total_iter_reg = self.args.reg_upper_limit / self.args.reg_granularity_prune * self.args.update_reg_interval + self.args.stabilize_reg_interval
@@ -236,6 +236,18 @@ class Pruner(MetaPruner):
                 if self.prune_state == "stabilize_reg" and total_iter - self.iter_stabilize_reg == self.args.stabilize_reg_interval:
                     acc1, *_ = self.test(self.model)
                     self.logprint(f"'stabilize_reg' is done. Acc1 {acc1}. Iter {total_iter}")
+
+                    # # --- check accuracy to make sure '_merge_channels' works normally
+                    # # checked, works normally!
+                    # self._share_weights_for_filters()
+                    # acc1_before, *_ = self.test(self.model)
+                    # self._merge_channels()
+                    # acc1_after, *_ = self.test(self.model)
+                    # print(acc1_before, acc1_after)
+                    # exit()
+                    # # ---
+
+                    self._share_weights_for_filters()
                     self._merge_channels()
                     acc1, *_ = self.test(self.model)
                     self.logprint(f'Merge channels and zero out pruned weight groups. Acc1 {acc1}')
@@ -264,10 +276,7 @@ class Pruner(MetaPruner):
                     return copy.deepcopy(self.model)
 
                 if total_iter % self.args.print_interval == 0:
-                    t2 = time.time()
-                    total_time = t2 - t1
                     self.logprint(f"predicted_finish_time of reg: {timer()}")
-                    t1 = t2
             
             # after each epoch training, reinit
             if epoch % self.args.reinit_interval == 0:

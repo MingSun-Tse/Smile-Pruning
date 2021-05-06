@@ -228,7 +228,7 @@ class Pruner(MetaPruner):
 
     def _apply_reg(self):
         for name, m in self.model.named_modules():
-            if name in self.reg:
+            if name in self.reg and self.pr[name] > 0:
                 reg = self.reg[name] # [N, C]
                 if self.args.wg in ['filter', 'channel']:
                     if reg.shape != m.weight.data.shape:
@@ -238,13 +238,19 @@ class Pruner(MetaPruner):
                 m.weight.grad += reg * m.weight
                 bias = False if isinstance(m.bias, type(None)) else True
                 if bias:
-                    m.bias.grad += reg[:,0,0,0] * m.bias
+                    if len(reg.shape) == 4:
+                        m.bias.grad += reg[:,0,0,0] * m.bias
+                    elif len(reg.shape) == 2:
+                        m.bias.grad += reg[:,0,] * m.bias
+                    else:
+                        raise NotImplementedError
                 
                 # apply reg to bn
                 next_bn = self.next_bn[name]
-                assert self.args.wg == 'filter'
-                next_bn.weight.grad += reg[:,0,0,0] * next_bn.weight # [N]
-                next_bn.bias.grad += reg[:,0,0,0] * next_bn.bias
+                if next_bn:
+                    assert self.args.wg == 'filter'
+                    next_bn.weight.grad += reg[:,0,0,0] * next_bn.weight
+                    next_bn.bias.grad += reg[:,0,0,0] * next_bn.bias
 
     
     def _resume_prune_status(self, ckpt_path):

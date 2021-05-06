@@ -311,6 +311,7 @@ class Pruner(MetaPruner):
                 # OPP regularization
                 if self.args.lw_opp:
                     loss_opp = 0
+                    lw_opp = self.args.lw_opp
                     for name, module in self.model.named_modules():
                         if isinstance(module, self.learnable_layers):
                             if self.args.opp_scheme == 1:
@@ -337,13 +338,13 @@ class Pruner(MetaPruner):
                             elif self.args.opp_scheme == 5:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v5(module.weight, pruned_wg=self.pruned_wg[name])
-                                    self.args.lw_opp = self.reg[name].max() / self.args.lr_prune
+                                    lw_opp = self.args.lw_opp * self.reg[name].max()
                             
                             else:
                                 raise NotImplementedError
 
-                    loss += self.args.lw_opp * loss_opp
-                    logtmp += f' loss_opp (*{self.args.lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
+                    loss += lw_opp * loss_opp
+                    logtmp += f' loss_opp (*{lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
                 
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:

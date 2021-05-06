@@ -248,7 +248,7 @@ class Pruner(MetaPruner):
         if name not in self.iter_finish_pick and finish_pick_cond:
             self.iter_finish_pick[name] = self.total_iter
             pruned_wg = self._pick_pruned_wg(w_abs, pr)
-            kept_wg = [i for i in range(n_wg) if i not in pruned_wg]
+            kept_wg = list(set(range(n_wg)) - set(pruned_wg))
             self.kept_wg[name] = kept_wg
             self.pruned_wg[name] = pruned_wg
             picked_wg_in_common = [i for i in pruned_wg if i in self.pruned_wg_L1[name]]

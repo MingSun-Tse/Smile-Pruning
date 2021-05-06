@@ -1,6 +1,7 @@
 from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights, delta_orthogonalize_weights
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 
 def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=print):
@@ -117,3 +118,14 @@ def orth_regularization_v4(w, original_column_gram, pruned_wg):
     # column: maintain energy
     loss2 = nn.MSELoss()(torch.matmul(w_.t(), w_), original_column_gram)
     return loss1, loss2
+
+def orth_regularization_v5(w, pruned_wg):
+    '''Decorrelate kept weights from pruned weights.
+    '''
+    w_ = w.view(w.size(0), -1)
+    target_gram = torch.matmul(w_, w_.t()).detach() # note: detach!
+    for x in pruned_wg:
+        target_gram[x, :] = 0
+        target_gram[:, x] = 0
+    loss = F.mse_loss(torch.matmul(w_, w_.t()), target_gram, reduction='mean')
+    return loss

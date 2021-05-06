@@ -44,7 +44,7 @@ class Pruner(MetaPruner):
 
         self.prune_state = "update_reg"
         for name, m in self.model.named_modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, self.learnable_layers):
                 shape = m.weight.data.shape
 
                 # initialize reg
@@ -66,10 +66,17 @@ class Pruner(MetaPruner):
         # init original_column_gram
         self.original_column_gram = OrderedDict()
         for name, m in self.model.named_modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+            if isinstance(m, self.learnable_layers):
                 w = m.weight.data
                 w = w.view(w.size(0), -1)
                 self.original_column_gram[name] = w.t() @ w
+        
+        # get bn after each conv/fc
+        self.next_bn = {}
+        for n, m in self.model.named_modules():
+            if isinstance(m, self.learnable_layers):
+                next_bn = self._next_bn(self.model, m)
+                self.next_bn[n] = next_bn
 
     def _pick_pruned_wg(self, w, pr):
         if pr == 0:
@@ -228,11 +235,17 @@ class Pruner(MetaPruner):
                         reg = reg.unsqueeze(2).unsqueeze(3) # [N, C, 1, 1]
                 elif self.args.wg == 'weight':
                     reg = reg.view_as(m.weight.data) # [N, C, H, W]
-                l2_grad = reg * m.weight
-                if self.args.block_loss_grad:
-                    m.weight.grad = l2_grad
-                else:
-                    m.weight.grad += l2_grad
+                m.weight.grad += reg * m.weight
+                bias = False if isinstance(m.bias, type(None)) else True
+                if bias:
+                    m.bias.grad += reg[:,0,0,0] * m.bias
+                
+                # apply reg to bn
+                next_bn = self.next_bn[name]
+                assert self.args.wg == 'filter'
+                next_bn.weight.grad += reg[:,0,0,0] * next_bn.weight # [N]
+                next_bn.bias.grad += reg[:,0,0,0] * next_bn.bias
+
     
     def _resume_prune_status(self, ckpt_path):
         state = torch.load(ckpt_path)

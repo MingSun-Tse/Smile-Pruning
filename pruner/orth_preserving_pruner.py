@@ -354,8 +354,7 @@ class Pruner(MetaPruner):
                 loss.backward()
                 
                 # after backward but before update, apply reg to the grad
-                if self.args.opp_scheme in [1, 2, 3, 4]:
-                    self._apply_reg() # no need to apply reg for orth_regularization_v5 since it has been done in orth_regularization_v5
+                self._apply_reg()
                 self.optimizer.step()
 
                 # test

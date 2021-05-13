@@ -71,7 +71,7 @@ class Pruner(MetaPruner):
                 
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:
-                    logtmp += f' loss_orth_reg (*{self.args.lw_orth_reg}) {loss_orth_reg:.4f} Iter {self.total_iter}'
+                    logtmp += f' loss_orth_reg (*{self.args.lw_orth_reg}) {loss_orth_reg:.10f} Iter {self.total_iter}'
                     self.logprint(logtmp)
                     self.logprint(f"predicted_finish_time of orth_reg: {timer()}")
 

@@ -4,7 +4,7 @@ import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
 from .reinit_model import reinit_model, orth_regularization, orth_regularization_v3, orth_regularization_v4, deconv_orth_dist
-from .reinit_model import orth_regularization_v5
+from .reinit_model import orth_regularization_v5, orth_regularization_v5_2
 from utils import plot_weights_heatmap, Timer
 import matplotlib.pyplot as plt
 from collections import OrderedDict
@@ -333,32 +333,36 @@ class Pruner(MetaPruner):
                     lw_opp = self.args.lw_opp
                     for name, module in self.model.named_modules():
                         if isinstance(module, self.learnable_layers):
-                            if self.args.opp_scheme == 1:
+                            if self.args.opp_scheme in ['1']:
                                 shape = self.layers[name].size
                                 if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
                                     loss_opp += orth_regularization(module.weight)
                                 else:
                                     loss_opp += deconv_orth_dist(module.weight)
                             
-                            elif self.args.opp_scheme == 2:
+                            elif self.args.opp_scheme in ['2']:
                                 loss_opp += orth_regularization(module.weight, transpose=self.args.transpose)
                             
-                            elif self.args.opp_scheme == 3:
+                            elif self.args.opp_scheme in ['3']:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
                             
-                            elif self.args.opp_scheme == 4:
+                            elif self.args.opp_scheme in ['4']:
                                 if self.pr[name] > 0:
                                     loss1, loss2 = orth_regularization_v4(module.weight, self.original_column_gram[name], pruned_wg=self.pruned_wg[name])
                                     loss_opp += loss1 + loss2
                                     if self.total_iter % self.args.print_interval == 0:
                                         self.logprint(f'{name} [pr {self.pr[name]}] -- loss row {loss1:.8f} loss column {loss2:.8f}')
                             
-                            elif self.args.opp_scheme == 5:
+                            elif self.args.opp_scheme in ['5']:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v5(module.weight, pruned_wg=self.pruned_wg[name])
                                     lw_opp = self.args.lw_opp * self.reg[name].max()
                             
+                            elif self.args.opp_scheme in ['5_2']:
+                                if self.pr[name] > 0:
+                                    loss_opp += orth_regularization_v5_2(module.weight, pruned_wg=self.pruned_wg[name])
+                                    lw_opp = self.args.lw_opp * self.reg[name].max()
                             else:
                                 raise NotImplementedError
 

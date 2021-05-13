@@ -85,7 +85,6 @@ def orth_regularization(w, transpose=True):
         w_ = w_.t()
     identity = torch.eye(w_.size(0)).cuda()
     loss = nn.MSELoss()(torch.matmul(w_, w_.t()), identity)
-    # torch.norm(w.t_() @ w - torch.eye(w.size(1)).cuda())
     return loss
 
 def orth_regularization_v3(w, pruned_wg):
@@ -99,6 +98,8 @@ def orth_regularization_v3(w, pruned_wg):
 
 def deconv_orth_dist(kernel, stride = 2, padding = 1):
     '''Refer to 2020-CVPR-Orthogonal Convolutional Neural Networks.
+    https://github.com/samaonline/Orthogonal-Convolutional-Neural-Networks
+    CodeID: 14de526
     '''
     [o_c, i_c, w, h] = kernel.shape
     output = torch.conv2d(kernel, kernel, stride=stride, padding=padding)
@@ -106,6 +107,16 @@ def deconv_orth_dist(kernel, stride = 2, padding = 1):
     ct = int(np.floor(output.shape[-1]/2))
     target[:,:,ct,ct] = torch.eye(o_c).cuda()
     return torch.norm( output - target )
+
+def orth_dist(mat, stride=None):
+    '''Refer to 2020-CVPR-Orthogonal Convolutional Neural Networks.
+    https://github.com/samaonline/Orthogonal-Convolutional-Neural-Networks
+    CodeID: 14de526
+    '''
+    mat = mat.reshape( (mat.shape[0], -1) )
+    if mat.shape[0] < mat.shape[1]:
+        mat = mat.permute(1,0)
+    return torch.norm( torch.t(mat)@mat - torch.eye(mat.shape[1]).cuda())
 
 def orth_regularization_v4(w, original_column_gram, pruned_wg):
     # row: orthogonal
@@ -128,4 +139,14 @@ def orth_regularization_v5(w, pruned_wg):
         target_gram[x, :] = 0
         target_gram[:, x] = 0
     loss = F.mse_loss(torch.matmul(w_, w_.t()), target_gram, reduction='mean')
+    return loss
+
+def orth_regularization_v5_2(w, pruned_wg):
+    '''Compared to v5 for ablation study.
+    '''
+    w_ = w.view(w.size(0), -1)
+    identity = torch.eye(w_.size(0)).cuda()
+    for x in pruned_wg:
+        identity[x, x] = 0
+    loss = F.mse_loss(torch.matmul(w_, w_.t()), identity)
     return loss

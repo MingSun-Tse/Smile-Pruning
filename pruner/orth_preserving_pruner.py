@@ -377,7 +377,8 @@ class Pruner(MetaPruner):
                 loss.backward()
                 
                 # after backward but before update, apply reg to the grad
-                self._apply_reg()
+                if not self.args.not_apply_reg:
+                    self._apply_reg()
                 self.optimizer.step()
 
                 # test

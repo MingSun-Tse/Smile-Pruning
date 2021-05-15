@@ -333,33 +333,33 @@ class Pruner(MetaPruner):
                     lw_opp = self.args.lw_opp
                     for name, module in self.model.named_modules():
                         if isinstance(module, self.learnable_layers):
-                            if self.args.opp_scheme in ['1']:
+                            if self.args.opp_scheme in ['1', 'v1']:
                                 shape = self.layers[name].size
                                 if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
                                     loss_opp += orth_regularization(module.weight)
                                 else:
                                     loss_opp += deconv_orth_dist(module.weight)
                             
-                            elif self.args.opp_scheme in ['2']:
+                            elif self.args.opp_scheme in ['2', 'v2']:
                                 loss_opp += orth_regularization(module.weight, transpose=self.args.transpose)
                             
-                            elif self.args.opp_scheme in ['3']:
+                            elif self.args.opp_scheme in ['3', 'v3']:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v3(module.weight, pruned_wg=self.pruned_wg[name])
                             
-                            elif self.args.opp_scheme in ['4']:
+                            elif self.args.opp_scheme in ['4', 'v4']:
                                 if self.pr[name] > 0:
                                     loss1, loss2 = orth_regularization_v4(module.weight, self.original_column_gram[name], pruned_wg=self.pruned_wg[name])
                                     loss_opp += loss1 + loss2
                                     if self.total_iter % self.args.print_interval == 0:
                                         self.logprint(f'{name} [pr {self.pr[name]}] -- loss row {loss1:.8f} loss column {loss2:.8f}')
                             
-                            elif self.args.opp_scheme in ['5']:
+                            elif self.args.opp_scheme in ['5', 'v5']:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v5(module.weight, pruned_wg=self.pruned_wg[name])
                                     lw_opp = self.args.lw_opp * self.reg[name].max()
                             
-                            elif self.args.opp_scheme in ['5_2']:
+                            elif self.args.opp_scheme in ['5_2', 'v5_2']:
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v5_2(module.weight, pruned_wg=self.pruned_wg[name])
                                     lw_opp = self.args.lw_opp * self.reg[name].max()

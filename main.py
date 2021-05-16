@@ -37,7 +37,7 @@ from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
 from model import model_dict, is_single_branch
 from data import num_classes_dict, img_size_dict
 from pruner import pruner_dict
-from pruner.reinit_model import reinit_model
+from pruner.reinit_model import reinit_model, orth_dist, deconv_orth_dist
 from pruner.feat_analyze import FeatureAnalyzer
 from option import args
 pjoin = os.path.join
@@ -549,6 +549,27 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
         top5.update(acc5[0], images.size(0))
+
+        # orth regularization
+        if args.orth_reg_iter_ft:
+            loss_orth_reg, cnt = 0, -1
+            for name, module in model.named_modules():
+                if isinstance(module, (nn.Conv2d, nn.Linear)):
+                    cnt += 1
+                    if args.orth_reg_method in ['CVPR20']:
+                        if cnt != 0: # per the CVPR20 paper, do not reg the 1st conv
+                            shape = module.weight.shape
+                            if len(shape) == 2 or shape[-1] == 1: # FC and 1x1 conv 
+                                loss_orth_reg += orth_dist(module.weight)
+                            else:
+                                loss_orth_reg += deconv_orth_dist(module.weight)
+                    elif args.orth_reg_method in ['CVPR17']:
+                        loss_orth_reg += orth_dist(module.weight)
+                    else:
+                        raise NotImplementedError
+            loss += loss_orth_reg * args.lw_orth_reg
+            if i % args.print_interval == 0:
+                logprint(f'loss_orth_reg (*{args.lw_orth_reg}) {loss_orth_reg:.10f} Epoch {epoch} Iter {i}')
 
         # compute gradient and do SGD step
         optimizer.zero_grad()

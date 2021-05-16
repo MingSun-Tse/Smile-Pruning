@@ -141,6 +141,7 @@ parser.add_argument('--clustering', type=str, help='clustering method: l1, kmean
 
 # orthogonal regularization train
 parser.add_argument('--orth_reg_iter', type=int, default=0)
+parser.add_argument('--orth_reg_iter_ft', type=int, default=0)
 parser.add_argument('--orth_reg_method', type=str, default='CVPR20', choices=['CVPR20', 'CVPR17'])
 parser.add_argument('--lw_orth_reg', type=float, default=0.1, 
             help='loss weight of orth reg. refers to CVPR20 Orthogonal-Convolutional-Neural-Networks code (14de526)')

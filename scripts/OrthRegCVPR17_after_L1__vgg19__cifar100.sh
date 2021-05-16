@@ -1,0 +1,9 @@
+python main.py --method L1 -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/teacher-vgg19-cifar100-wd0.0005_SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --stage_pr [1-15:0.1] --project L1__vgg19__cifar100__pr0.1__lrft0.01__OrthRegFTCVPR17 --orth_reg_iter_ft 50000 --orth_reg_method CVPR17
+
+python main.py --method L1 -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/teacher-vgg19-cifar100-wd0.0005_SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --stage_pr [1-15:0.3] --project L1__vgg19__cifar100__pr0.3__lrft0.01__OrthRegFTCVPR17 --orth_reg_iter_ft 50000 --orth_reg_method CVPR17
+
+python main.py --method L1 -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/teacher-vgg19-cifar100-wd0.0005_SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --stage_pr [1-15:0.5] --project L1__vgg19__cifar100__pr0.5__lrft0.01__OrthRegFTCVPR17 --orth_reg_iter_ft 50000 --orth_reg_method CVPR17
+
+python main.py --method L1 -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/teacher-vgg19-cifar100-wd0.0005_SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --stage_pr [1-15:0.7] --project L1__vgg19__cifar100__pr0.7__lrft0.01__OrthRegFTCVPR17 --orth_reg_iter_ft 50000 --orth_reg_method CVPR17
+
+python main.py --method L1 -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/teacher-vgg19-cifar100-wd0.0005_SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --stage_pr [1-15:0.9] --project L1__vgg19__cifar100__pr0.9__lrft0.01__OrthRegFTCVPR17 --orth_reg_iter_ft 50000 --orth_reg_method CVPR17

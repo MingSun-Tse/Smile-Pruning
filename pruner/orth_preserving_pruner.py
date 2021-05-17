@@ -246,11 +246,12 @@ class Pruner(MetaPruner):
                         raise NotImplementedError
                 
                 # apply reg to bn
-                next_bn = self.next_bn[name]
-                if next_bn:
-                    assert self.args.wg == 'filter'
-                    next_bn.weight.grad += reg[:,0,0,0] * next_bn.weight
-                    next_bn.bias.grad += reg[:,0,0,0] * next_bn.bias
+                if self.args.bn_reg:
+                    next_bn = self.next_bn[name]
+                    if next_bn:
+                        assert self.args.wg == 'filter'
+                        next_bn.weight.grad += reg[:,0,0,0] * next_bn.weight
+                        next_bn.bias.grad += reg[:,0,0,0] * next_bn.bias
 
     
     def _resume_prune_status(self, ckpt_path):

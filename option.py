@@ -147,6 +147,8 @@ parser.add_argument('--lw_orth_reg', type=float, default=0.1,
             help='loss weight of orth reg. refers to CVPR20 Orthogonal-Convolutional-Neural-Networks code (14de526)')
 parser.add_argument('--not_apply_reg', action="store_true", help='not apply L2 reg to gradients')
 parser.add_argument('--greg_via_loss', action="store_true", help='implement greg via loss instead of gradient')
+parser.add_argument('--no_bn_reg', dest='bn_reg', action="store_false", default=True,
+            help='not apply bn reg')
 
 args = parser.parse_args()
 args_tmp = {}

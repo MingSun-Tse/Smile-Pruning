@@ -241,7 +241,7 @@ class Pruner(MetaPruner):
                     if len(reg.shape) == 4:
                         m.bias.grad += reg[:,0,0,0] * m.bias
                     elif len(reg.shape) == 2:
-                        m.bias.grad += reg[:,0,] * m.bias
+                        m.bias.grad += reg[:,0] * m.bias
                     else:
                         raise NotImplementedError
                 
@@ -327,6 +327,20 @@ class Pruner(MetaPruner):
                 loss = self.criterion(y_, targets)
                 logtmp = f'loss_cls {loss:.4f}'
 
+                # GReg implemented via loss
+                if self.args.greg_via_loss:
+                    loss_greg, lw = 0, 0
+                    for name, module in self.model.named_modules():
+                        if isinstance(module, self.learnable_layers) and self.pr[name] > 0:
+                            w = module.weight
+                            w = w.view(w.size(0), -1)
+                            mask = torch.ones_like(w).cuda()
+                            mask[self.kept_wg[name], :] = 0 # only apply reg to the pruned wgs
+                            loss_greg += 0.5 * (w * w * mask).sum()
+                            lw = self.reg[name].max()
+                    loss += loss_greg * lw
+                    logtmp += f' loss_greg (*{lw}) {loss_greg:.4f}'
+
                 # OPP regularization
                 if self.args.lw_opp:
                     loss_opp = 0
@@ -367,10 +381,11 @@ class Pruner(MetaPruner):
                                 raise NotImplementedError
 
                     loss += lw_opp * loss_opp
-                    logtmp += f' loss_opp (*{lw_opp}) {loss_opp:.4f} Iter {self.total_iter}'
+                    logtmp += f' loss_opp (*{lw_opp}) {loss_opp:.4f}'
                 
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:
+                    logtmp += f' Iter {self.total_iter}'
                     self.logprint(logtmp)
 
                 self.optimizer.zero_grad()

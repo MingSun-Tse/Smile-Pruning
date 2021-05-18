@@ -17,17 +17,17 @@ class Data(object):
         
         self.train_loader = DataLoader(train_set,
                                        batch_size=args.batch_size,
-                                       num_workers=4,
+                                       num_workers=args.workers,
                                        shuffle=True,
                                        pin_memory=True)
         self.train_loader_prune = DataLoader(train_set,
                                        batch_size=args.batch_size_prune,
-                                       num_workers=4,
+                                       num_workers=args.workers,
                                        shuffle=True,
                                        pin_memory=True)
         self.test_loader = DataLoader(test_set,
                                       batch_size=256,
-                                      num_workers=4,
+                                      num_workers=args.workers,
                                       shuffle=False,
                                       pin_memory=True)
 

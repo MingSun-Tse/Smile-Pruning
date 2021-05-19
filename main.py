@@ -640,9 +640,8 @@ def validate(val_loader, model, criterion, args, noisy_model_ensemble=False):
             batch_time.update(time.time() - end)
             end = time.time()
 
-            # if i % args.print_freq == 0:
-            #     progress.display(i)
-            # @mst: commented because of too much log
+            if i % args.print_freq == 0:
+                progress.display(i)
 
         # TODO: this should also be done with the ProgressMeter
         # logprint(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'

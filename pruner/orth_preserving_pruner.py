@@ -414,7 +414,7 @@ class Pruner(MetaPruner):
                     w_num_sum = 0
                     cnt_m = 0
                     for _, m in self.model.named_modules():
-                        if isinstance(m, nn.Conv2d):
+                        if isinstance(m, self.learnable_layers):
                             cnt_m += 1
                             w_abs_sum += m.weight.abs().sum()
                             w_num_sum += m.weight.numel()

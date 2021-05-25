@@ -96,3 +96,21 @@ out = '%s/%s.pdf' % (logger.log_path, ExpID)
 fig.tight_layout()
 fig.savefig(out)
 logprint('save to "%s"' % out)
+
+
+# ax2 = ax1.twinx()
+
+# # set x ylim
+# # ax1.set_xlim(0, 89)
+# ax1.set_ylim(0, 6)
+# ax2.set_ylim(0, 100)
+
+# # make grid of two axes aligned
+# # ax2.set_yticks(np.linspace(ax2.get_yticks()[0], ax2.get_yticks()[-1], len(ax1.get_yticks()))) 
+# # above refer to https://stackoverflow.com/questions/26752464/how-do-i-align-gridlines-for-two-y-axis-scales-using-matplotlib, not working
+# ax2.grid(None)
+
+# # set x ylabel
+# ax1.set_xlabel('Epoch', fontsize=14)
+# ax1.set_ylabel('JSV', fontsize=14)
+# ax2.set_ylabel('Test accuracy (%)', fontsize=14)

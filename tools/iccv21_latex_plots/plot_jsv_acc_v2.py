@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman" # set fonts globally
 import argparse
 # plt.style.use(['science'])
+sys.path.insert(0, './')
 from utils import set_ax, parse_value, parse_ExpID, check_path
 from logger import Logger
 from mpl_toolkits.axes_grid.inset_locator import inset_axes

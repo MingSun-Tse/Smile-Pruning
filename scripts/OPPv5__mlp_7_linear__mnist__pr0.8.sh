@@ -1,0 +1,3 @@
+
+# lrft=0.01, 90 epochs
+python main.py --arch mlp_7_linear --dataset mnist --method OPP --opp_scheme v5 --base_model_path Experiments/Scratch__mlp_7_linear__mnist_SERVER138-20210120-221449/weights/checkpoint_best.pth --batch_size 100 --activation linear --project OPPv5__mlp_7_linear__mnist__wgfilter__pr0.8__lrft0.01__epoch90 --lr_ft 0:0.01,30:0.001,60:0.0001 --epochs 90 --stage_pr [0-5:0.8,6:0] --batch_size_prune 100 --update_reg_interval 10 --stabilize_reg_interval 10000 --jsv_loop 10

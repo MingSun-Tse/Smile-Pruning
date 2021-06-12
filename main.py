@@ -294,8 +294,8 @@ def main_worker(gpu, ngpus_per_node, args):
                                                 weight_decay=args.weight_decay)
                 optimizer.load_state_dict(state['optimizer'])
                 args.start_epoch = state['epoch']
-                logstr = "==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
-                        args.resume_path, args.start_epoch, prune_state)
+                logprint("==> Resume model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+                        args.resume_path, args.start_epoch, prune_state))
             else:
                 raise NotImplementedError
 
@@ -305,7 +305,7 @@ def main_worker(gpu, ngpus_per_node, args):
             model = state['model'].cuda()
             model.load_state_dict(state['state_dict'])
             prune_state = 'finetune'
-            logprint("==> Load pretrained model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+            logprint("==> Load model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                     args.directly_ft_weights, args.start_epoch, prune_state))
 
             if 'mask' in state:

@@ -45,6 +45,10 @@ num_layers = {
     'vgg13': 13,
     'vgg16': 16,
     'vgg19': 19,
+    'vgg11_bn': 11,
+    'vgg13_bn': 13,
+    'vgg16_bn': 16,
+    'vgg19_bn': 19,
 }
 
 single_branch_model = [

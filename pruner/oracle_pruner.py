@@ -1,13 +1,9 @@
-import torch
 import torch.nn as nn
 import copy
-import time
 import numpy as np
 from utils import _weights_init
 from .meta_pruner import MetaPruner
 import itertools
-# from multiprocessing import Pool
-from pathos.multiprocessing import ProcessingPool as Pool
 
 class Pruner(MetaPruner):
     def __init__(self, model, args, logger, passer):

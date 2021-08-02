@@ -97,8 +97,15 @@ def main_worker(gpu, ngpus_per_node, args):
         val_loader = loader.test_loader
     else:   
         traindir = os.path.join(args.data_path, args.dataset, 'train')
-        folder = 'val3' if args.debug else 'val' # @mst: val3 is a tiny version of val, to accelerate test in debugging
-        valdir = os.path.join(args.data_path, args.dataset, folder)
+        val_folder = 'val'
+        if args.debug:
+            val_folder = 'val_tmp' # val_tmp is a tiny version of val to accelerate test in debugging
+            val_folder_path = f'{args.data_path}/{args.dataset}/{val_folder}'
+            if not os.path.exists(val_folder_path):
+                os.makedirs(val_folder_path)
+                dirs = os.listdir(f'{args.data_path}/{args.dataset}/val')[:3]
+                [shutil.copytree(f'{args.data_path}/{args.dataset}/val/{d}', f'{val_folder_path}/{d}') for d in dirs]
+        valdir = os.path.join(args.data_path, args.dataset, val_folder)
         normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                         std=[0.229, 0.224, 0.225])
         transforms_train = transforms.Compose([

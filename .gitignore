@@ -5,6 +5,11 @@ Experiments
 data/cifar10*
 data/mnist
 data/imagenet*
+data/tiny_imagenet
+pruned_models
 base_models
 model/*.th
 train_params/
+corr_analysis_oracle_pruning.jpg
+scripts
+

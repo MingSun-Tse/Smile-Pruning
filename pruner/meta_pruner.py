@@ -284,8 +284,8 @@ class MetaPruner:
 
                     self.pruned_wg[name] = self._pick_pruned(score, self.pr[name], self.args.pick_pruned)
                     self.kept_wg[name] = list(set(range(len(score))) - set(self.pruned_wg[name]))
-                    format_str = "[%{}d] %{}s -- got pruned wg by L1 sorting (%s), pr %s".format(self._max_len_ix, self._max_len_name)
-                    logtmp = format_str % (self.layers[name].layer_index, name, self.args.pick_pruned, self.pr[name])
+                    format_str = f"[%{self._max_len_ix}d] %{self._max_len_name}s -- shape {shape} -- got pruned wg by L1 sorting ({self.args.pick_pruned}), pr {self.pr[name]}"
+                    logtmp = format_str % (self.layers[name].layer_index, name)
 
                     # compare the pruned weights picked by L1-sorting vs. other criterion which provides the base_pr_model (e.g., OBD)
                     if self.args.base_pr_model:
@@ -333,7 +333,7 @@ class MetaPruner:
         for name, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):
                 kept_filter, kept_chl = self._get_kept_filter_channel(m, name)
-                print(f'{name} kept_filter: {kept_filter} kept_chl: {kept_chl}')
+                # print(f'{name} kept_filter: {kept_filter} kept_chl: {kept_chl}')
                 
                 # copy weight and bias
                 bias = False if isinstance(m.bias, type(None)) else True

@@ -77,7 +77,8 @@ parser.add_argument('--print_interval', type=int, default=100)
 parser.add_argument('--test_interval', type=int, default=2000)
 parser.add_argument('--plot_interval', type=int, default=100000000)
 parser.add_argument('--save_interval', type=int, default=2000, help="the interval to save model")
-parser.add_argument('--params_json', type=str, default='', help='experiment params')
+parser.add_argument('--ExpID', type=str, default='', 
+        help='Experiment id. In default it will be assigned automatically')
 
 # base model related
 parser.add_argument('--resume_path', type=str, default=None, help="supposed to replace the original 'resume' feature")
@@ -88,7 +89,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
+parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
     help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--skip_layers', type=str, default="", help='layer id to skip when pruning')
@@ -150,14 +151,18 @@ parser.add_argument('--greg_via_loss', action="store_true", help='implement greg
 parser.add_argument('--no_bn_reg', dest='bn_reg', action="store_false", default=True,
             help='not apply bn reg')
 
+# LTH related
+parser.add_argument('--num_cycles', type=int, default=0, 
+            help='num of cycles in iterative pruning')
+parser.add_argument('--lr_ft_mini', type=str, default='', 
+            help='finetuning lr in each iterative pruning cycle')
+parser.add_argument('--epochs_mini', type=int, default=0,
+            help='num of epochs in each iterative pruning cycle')
+
 args = parser.parse_args()
 args_tmp = {}
 for k, v in args._get_kwargs():
     args_tmp[k] = v
-
-# merge other params (such as method params)
-if args.params_json:
-    args = merge_args(args, args.params_json)
 
 # Above is the default setting. But if we explicitly assign new value for some arg in the shell script, 
 # the following will adjust the arg to the assigned value.
@@ -178,7 +183,7 @@ if args.stage_pr:
 else:
     assert args.base_pr_model, 'If stage_pr is not provided, base_pr_model must be provided'
 
-# set up lr for finetuning
+# set up finetuning lr
 assert args.lr_ft, 'lr_ft must be provided'
 args.lr_ft = strdict_to_dict(args.lr_ft, float)
 
@@ -186,6 +191,10 @@ args.resume_path = check_path(args.resume_path)
 args.directly_ft_weights = check_path(args.directly_ft_weights)
 args.base_model_path = check_path(args.base_model_path)
 args.base_pr_model = check_path(args.base_pr_model)
+
+if args.method in ['L1_Iter']:
+    assert args.num_cycles > 0
+    args.lr_ft_mini = strdict_to_dict(args.lr_ft_mini, float)
 
 # some deprecated params to maintain back-compatibility
 args.copy_bn_w = True

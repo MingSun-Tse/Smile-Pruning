@@ -24,7 +24,7 @@ class Pruner(MetaPruner):
     def _finetune(self, cycle):
         lr_scheduler = PresetLRScheduler(self.args.lr_ft_mini)
         optimizer = optim.SGD(self.model.parameters(), 
-                                lr=self.args.lr_prune,
+                                lr=0, # placeholder, this will be updated later
                                 momentum=self.args.momentum,
                                 weight_decay=self.args.weight_decay)
         
@@ -32,6 +32,7 @@ class Pruner(MetaPruner):
         timer = Timer(self.args.epochs_mini)
         for epoch in range(self.args.epochs_mini):
             lr = lr_scheduler(optimizer, epoch)
+            self.logprint(f'[Subprune #{cycle} Finetune] Epoch {epoch} Set LR = {lr}')
             for ix, (inputs, targets) in enumerate(self.train_loader):
                 inputs, targets = inputs.cuda(), targets.cuda()
                 self.model.train()

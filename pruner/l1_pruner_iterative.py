@@ -20,7 +20,13 @@ class Pruner(MetaPruner):
         for layer, pr in self.pr_backup.items():
             pr_each_time = 1 - (1 - pr) ** (1. / self.args.num_cycles)
             self.pr[layer] = pr_each_time if self.args.wg in ['filter', 'channel'] else pr_each_time + self.pr[layer]
-                    
+
+    def _apply_mask_forward(self):
+        assert hasattr(self, 'mask') and len(self.mask.keys()) > 0
+        for name, m in self.model.named_modules():
+            if name in self.mask:
+                m.weight.data.mul_(self.mask[name])
+
     def _finetune(self, cycle):
         lr_scheduler = PresetLRScheduler(self.args.lr_ft_mini)
         optimizer = optim.SGD(self.model.parameters(), 
@@ -41,6 +47,10 @@ class Pruner(MetaPruner):
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+
+                if self.args.method and self.args.wg == 'weight':
+                    self._apply_mask_forward()
+
                 if ix % self.args.print_interval == 0:
                     self.logprint(f'[Subprune #{cycle} Finetune] Epoch {epoch} Step {ix} loss {loss:.4f}')
             # test

@@ -90,8 +90,11 @@ parser.add_argument('--save_init_model', action="store_true", help='save the mod
 
 # general pruning method related
 parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
-    help='pruning method name; default is "", implying the original training without any pruning')
+        help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
+parser.add_argument('--index_layer', type=str, default="numbers", choices=['numbers', 'name_matching'],
+        help='the rule to index layers in a network by its name; used in designating pruning ratio')
+parser.add_argument('--previous_layers', type=str, default='')
 parser.add_argument('--skip_layers', type=str, default="", help='layer id to skip when pruning')
 parser.add_argument('--lr_ft', type=str, default="{0:0.01,30:0.001,60:0.0001,75:0.00001}")
 parser.add_argument('--data_path', type=str, default="./data")
@@ -105,7 +108,7 @@ parser.add_argument('--save_order_log', action="store_true")
 parser.add_argument('--mag_ratio_limit', type=float, default=1000)
 parser.add_argument('--base_pr_model', type=str, default=None, help='the model that provides layer-wise pr')
 parser.add_argument('--inherit_pruned', type=str, default='index', choices=['index', 'pr'], 
-    help='when --base_pr_model is provided, we can choose to inherit the pruned index or only the pruning ratio (pr)')
+        help='when --base_pr_model is provided, we can choose to inherit the pruned index or only the pruning ratio (pr)')
 parser.add_argument('--model_noise_std', type=float, default=0, help='add Gaussian noise to model weights')
 parser.add_argument('--model_noise_num', type=int, default=10)
 parser.add_argument('--oracle_pruning', action="store_true")
@@ -145,19 +148,19 @@ parser.add_argument('--orth_reg_iter', type=int, default=0)
 parser.add_argument('--orth_reg_iter_ft', type=int, default=0)
 parser.add_argument('--orth_reg_method', type=str, default='CVPR20', choices=['CVPR20', 'CVPR17'])
 parser.add_argument('--lw_orth_reg', type=float, default=0.1, 
-            help='loss weight of orth reg. refers to CVPR20 Orthogonal-Convolutional-Neural-Networks code (14de526)')
+        help='loss weight of orth reg. refers to CVPR20 Orthogonal-Convolutional-Neural-Networks code (14de526)')
 parser.add_argument('--not_apply_reg', action="store_true", help='not apply L2 reg to gradients')
 parser.add_argument('--greg_via_loss', action="store_true", help='implement greg via loss instead of gradient')
 parser.add_argument('--no_bn_reg', dest='bn_reg', action="store_false", default=True,
-            help='not apply bn reg')
+        help='not apply bn reg')
 
 # LTH related
 parser.add_argument('--num_cycles', type=int, default=0, 
-            help='num of cycles in iterative pruning')
+        help='num of cycles in iterative pruning')
 parser.add_argument('--lr_ft_mini', type=str, default='', 
-            help='finetuning lr in each iterative pruning cycle')
+        help='finetuning lr in each iterative pruning cycle')
 parser.add_argument('--epochs_mini', type=int, default=0,
-            help='num of epochs in each iterative pruning cycle')
+        help='num of epochs in each iterative pruning cycle')
 
 args = parser.parse_args()
 args_tmp = {}
@@ -174,12 +177,15 @@ for k, v in args_tmp.items():
 # parse for layer-wise prune ratio
 # stage_pr is a list of float, skip_layers is a list of strings
 if args.stage_pr:
-    if is_single_branch(args.arch): # e.g., alexnet, vgg
-        args.stage_pr = parse_prune_ratio_vgg(args.stage_pr, num_layers=num_layers[args.arch]) # example: [0-4:0.5, 5:0.6, 8-10:0.2]
-        args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [0, 2, 6]
-    else: # e.g., resnet
-        args.stage_pr = strlist_to_list(args.stage_pr, float) # example: [0, 0.4, 0.5, 0]
-        args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [2.3.1, 3.1]
+    if args.index_layer == 'numbers': # deprecated, kept for now for back-compatability, will be removed
+        if is_single_branch(args.arch): # e.g., alexnet, vgg
+            args.stage_pr = parse_prune_ratio_vgg(args.stage_pr, num_layers=num_layers[args.arch]) # example: [0-4:0.5, 5:0.6, 8-10:0.2]
+            args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [0, 2, 6]
+        else: # e.g., resnet
+            args.stage_pr = strlist_to_list(args.stage_pr, float) # example: [0, 0.4, 0.5, 0]
+            args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [2.3.1, 3.1]
+    elif args.index_layer == 'name_matching':
+        args.stage_pr = strdict_to_dict(args.stage_pr, float)
 else:
     assert args.base_pr_model, 'If stage_pr is not provided, base_pr_model must be provided'
 
@@ -191,6 +197,8 @@ args.resume_path = check_path(args.resume_path)
 args.directly_ft_weights = check_path(args.directly_ft_weights)
 args.base_model_path = check_path(args.base_model_path)
 args.base_pr_model = check_path(args.base_pr_model)
+
+args.previous_layers = strdict_to_dict(args.previous_layers, str)
 
 if args.method in ['L1_Iter']:
     assert args.num_cycles > 0

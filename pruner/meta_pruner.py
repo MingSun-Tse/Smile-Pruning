@@ -6,6 +6,7 @@ import numpy as np
 from math import ceil, sqrt
 from collections import OrderedDict
 from utils import strdict_to_dict
+from fnmatch import fnmatch, fnmatchcase
 
 class Layer:
     def __init__(self, name, size, layer_index, res=False, layer_type=None):
@@ -44,7 +45,7 @@ class Layer:
                 return stage, seq_ix, blk_ix
             except:
                 print('!Parsing the layer name failed: %s. Please check.' % name)
-                
+    
 class MetaPruner:
     def __init__(self, model, args, logger, passer):
         self.model = model
@@ -107,7 +108,7 @@ class MetaPruner:
         for name, m in self.model.named_modules():
             self.all_layers += [name]
             if isinstance(m, self.learnable_layers):
-                if "downsample" not in name:
+                if "downsample" not in name: # hardcoding, an ugly design, will be improved
                     ix += 1
                 layer_shape[name] = [ix, m.weight.size()]
                 self._max_len_name = max(self._max_len_name, len(name))
@@ -140,11 +141,23 @@ class MetaPruner:
     def _prev_learnable_layer(self, model, name, mm):
         '''get the previous conv or fc layer name
         '''
+        # explicitly provide the previous layer name, then use it as the highest priority!
+        # useful for complex residual networks
+        for p in self.args.previous_layers: 
+            if fnmatch(name, p):
+                prev_layer = self.args.previous_layers[p]
+                if prev_layer.lower() == 'none':
+                    return None
+                else:
+                    return prev_layer
+        
+        # standard resnets. hardcoding, deprecated, will be improved
         if hasattr(self.layers[name], 'block_index'):
             block_index = self.layers[name].block_index
             if block_index in [None, 0, -1]: # 1st conv, 1st conv in a block, 1x1 shortcut layer
                 return None
         
+        # get the previous layer by order
         ix = self.layers[name].layer_index # layer index of current layer
         for name, layer in self.layers.items():
             if layer.layer_index == ix - 1:
@@ -233,23 +246,30 @@ class MetaPruner:
                 (wg == "filter" and block_index == self.n_conv_within_block - 1):
                 pr = 0
         
-        # Deprecated, will be removed:
-        # # adjust accordingly if we explictly provide the pr_ratio_file
-        # if self.args.pr_ratio_file:
-        #     line = open(self.args.pr_ratio_file).readline()
-        #     pr_weight = strdict_to_dict(line, float)
-        #     if str(layer_index) in pr_weight:
-        #         pr = pr_weight[str(layer_index)] * pr
+        return pr
+    
+    def _get_pr_by_name_matching(self, name):
+        pr = 0 # default pr = 0
+        for p in self.args.stage_pr:
+            if fnmatch(name, p):
+                pr = self.args.stage_pr[p]
         return pr
     
     def get_pr(self):
+        '''Get layer-wise pruning ratio for each layer.
+        '''
         self.pr = {}
         if self.args.stage_pr: # stage_pr may be None (in the case that base_pr_model is provided)
             assert self.args.base_pr_model is None
-            get_layer_pr = self._get_layer_pr_vgg if self.is_single_branch(self.args.arch) else self._get_layer_pr_resnet
-            for name, m in self.model.named_modules():
-                if isinstance(m, self.learnable_layers):
-                    self.pr[name] = get_layer_pr(name)
+            if self.args.index_layer == 'numbers': # old way to assign pruning ratios, deprecated, will be removed
+                get_layer_pr = self._get_layer_pr_vgg if self.is_single_branch(self.args.arch) else self._get_layer_pr_resnet
+                for name, m in self.model.named_modules():
+                    if isinstance(m, self.learnable_layers):
+                        self.pr[name] = get_layer_pr(name)
+            elif self.args.index_layer == 'name_matching':
+                for name, m in self.model.named_modules():
+                    if isinstance(m, self.learnable_layers):
+                        self.pr[name] = self._get_pr_by_name_matching(name)
         else:
             assert self.args.base_pr_model
             state = torch.load(self.args.base_pr_model)
@@ -295,6 +315,9 @@ class MetaPruner:
                     self.netprint(logtmp)
 
     def _get_kept_filter_channel(self, m, name):
+        '''For filter/channel pruning, prune one layer will affect the following/previous layer. This func is to figure out which filters
+        and channels will be kept in a layer speficially.
+        '''
         if self.args.wg == "channel":
             kept_chl = self.kept_wg[name]
             next_learnable_layer = self._next_learnable_layer(self.model, name, m)
@@ -306,21 +329,27 @@ class MetaPruner:
         elif self.args.wg == "filter":
             kept_filter = self.kept_wg[name]
             prev_learnable_layer = self._prev_learnable_layer(self.model, name, m)
-            if not prev_learnable_layer:
-                kept_chl = list(range(m.weight.size(1)))
+            if isinstance(m, nn.Conv2d) and m.groups == m.weight.shape[0] and m.weight.shape[1] == 1: # depth-wise conv
+                kept_chl = [0] # depth-wise conv, channel number is always 1
+                if prev_learnable_layer:
+                    kept_filter = [x for x in kept_filter if x in self.kept_wg[prev_learnable_layer]]
+                    self.kept_wg[name] = kept_filter
             else:
-                if self.layers[name].layer_type == self.layers[prev_learnable_layer].layer_type:
-                    kept_chl = self.kept_wg[prev_learnable_layer]
-                
-                else: # current layer is the 1st fc, the previous layer is the last conv
-                    last_conv_n_filter = self.layers[prev_learnable_layer].size[0]
-                    last_conv_fm_size = int(m.weight.size(1) / last_conv_n_filter) # feature map spatial size. 36 for alexnet
-                    self.logprint('last_conv_feature_map_size: %dx%d (before fed into the first fc)' % (sqrt(last_conv_fm_size), sqrt(last_conv_fm_size)))
-                    last_conv_kept_filter = self.kept_wg[prev_learnable_layer]
-                    kept_chl = []
-                    for i in last_conv_kept_filter:
-                        tmp = list(range(i * last_conv_fm_size, i * last_conv_fm_size + last_conv_fm_size))
-                        kept_chl += tmp
+                if not prev_learnable_layer:
+                    kept_chl = list(range(m.weight.size(1)))
+                else:
+                    if self.layers[name].layer_type == self.layers[prev_learnable_layer].layer_type:
+                        kept_chl = self.kept_wg[prev_learnable_layer]
+                    
+                    else: # current layer is the 1st fc, the previous layer is the last conv
+                        last_conv_n_filter = self.layers[prev_learnable_layer].size[0]
+                        last_conv_fm_size = int(m.weight.size(1) / last_conv_n_filter) # feature map spatial size. 36 for alexnet
+                        self.logprint('last_conv_feature_map_size: %dx%d (before fed into the first fc)' % (sqrt(last_conv_fm_size), sqrt(last_conv_fm_size)))
+                        last_conv_kept_filter = self.kept_wg[prev_learnable_layer]
+                        kept_chl = []
+                        for i in last_conv_kept_filter:
+                            tmp = list(range(i * last_conv_fm_size, i * last_conv_fm_size + last_conv_fm_size))
+                            kept_chl += tmp
         
         return kept_filter, kept_chl
 
@@ -339,8 +368,12 @@ class MetaPruner:
                 bias = False if isinstance(m.bias, type(None)) else True
                 if isinstance(m, nn.Conv2d):
                     kept_weights = m.weight.data[kept_filter][:, kept_chl, :, :]
-                    new_layer = nn.Conv2d(len(kept_chl), len(kept_filter), m.kernel_size,
-                                    m.stride, m.padding, m.dilation, m.groups, bias).cuda()
+                    if m.weight.shape[0] == m.groups and m.weight.shape[1] == 1: # depth-wise conv
+                        groups = len(kept_filter)
+                    else:
+                        groups = m.groups
+                    new_layer = nn.Conv2d(len(kept_chl) * groups, len(kept_filter), m.kernel_size,
+                                    m.stride, m.padding, m.dilation, groups, bias).cuda()
                 elif isinstance(m, nn.Linear):
                     kept_weights = m.weight.data[kept_filter][:, kept_chl]
                     new_layer = nn.Linear(in_features=len(kept_chl), out_features=len(kept_filter), bias=bias).cuda()

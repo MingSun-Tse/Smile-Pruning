@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0 python main.py -a mobilenet_v2 --pretrained --method L1 --dataset imagenet --index_layer name_matching --stage_pr *features.*.conv.0.0:0.5,*features.1.conv.0.0:0,*features.17.conv.2:0.5 --lr_ft 0:1e-2,30:1e-3,60:1e-4,75:1e-5 --epochs 90 --project L1__mobilenet_v2__imagenet__pr0.3__lrft0.01 -j 12

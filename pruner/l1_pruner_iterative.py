@@ -14,12 +14,18 @@ class Pruner(MetaPruner):
         for k, v in self.pr.items():
             self.pr_backup[k] = v
 
+        self.current_existing_partition = 1
+
     def _update_pr(self):
         '''update layer pruning ratio in iterative pruning
         '''
         for layer, pr in self.pr_backup.items():
-            pr_each_time = 1 - (1 - pr) ** (1. / self.args.num_cycles)
+            pr_each_time_to_current = 1 - (1 - pr) ** (1. / self.args.num_cycles)
+            pr_each_time = pr_each_time_to_current * self.current_existing_partition # this is to overall instead of current
             self.pr[layer] = pr_each_time if self.args.wg in ['filter', 'channel'] else pr_each_time + self.pr[layer]
+
+            self.current_existing_partition = self.current_existing_partition * (1 - pr_each_time_to_current)
+
 
     def _apply_mask_forward(self):
         assert hasattr(self, 'mask') and len(self.mask.keys()) > 0

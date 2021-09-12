@@ -24,7 +24,7 @@ class Pruner(MetaPruner):
             pr_each_time = pr_each_time_to_current * self.current_existing_partition # this is to overall instead of current
             self.pr[layer] = pr_each_time if self.args.wg in ['filter', 'channel'] else pr_each_time + self.pr[layer]
 
-            self.current_existing_partition = self.current_existing_partition * (1 - pr_each_time_to_current)
+        self.current_existing_partition = self.current_existing_partition * (1 - pr_each_time_to_current)
 
 
     def _apply_mask_forward(self):

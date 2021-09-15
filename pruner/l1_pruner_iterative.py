@@ -6,6 +6,7 @@ import numpy as np
 import torch.optim as optim
 from .meta_pruner import MetaPruner
 from utils import PresetLRScheduler, Timer
+from pdb import set_trace as st
 
 class Pruner(MetaPruner):
     def __init__(self, model, args, logger, passer):
@@ -14,17 +15,15 @@ class Pruner(MetaPruner):
         for k, v in self.pr.items():
             self.pr_backup[k] = v
 
-        self.current_existing_partition = 1
 
-    def _update_pr(self):
+    def _update_pr(self, cycle):
         '''update layer pruning ratio in iterative pruning
         '''
         for layer, pr in self.pr_backup.items():
             pr_each_time_to_current = 1 - (1 - pr) ** (1. / self.args.num_cycles)
-            pr_each_time = pr_each_time_to_current * self.current_existing_partition # this is to overall instead of current
+            pr_each_time = pr_each_time_to_current * ( (1-pr_each_time_to_current) ** (cycle-1) )
             self.pr[layer] = pr_each_time if self.args.wg in ['filter', 'channel'] else pr_each_time + self.pr[layer]
 
-            self.current_existing_partition = self.current_existing_partition * (1 - pr_each_time_to_current)
 
 
     def _apply_mask_forward(self):
@@ -74,7 +73,7 @@ class Pruner(MetaPruner):
 
         for cycle in range(1, self.args.num_cycles + 1):
             self.logprint(f'==> Start subprune #{cycle}')
-            self._update_pr()
+            self._update_pr(cycle)
             self._get_kept_wg_L1()
             self._prune_and_build_new_model()
             if cycle < self.args.num_cycles:

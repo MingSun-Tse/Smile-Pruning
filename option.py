@@ -1,5 +1,5 @@
 import torchvision.models as models
-import argparse
+import configargparse
 import sys
 
 
@@ -7,7 +7,7 @@ model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
-parser = argparse.ArgumentParser(description='Regularization-Pruning PyTorch')
+parser = configargparse.ArgumentParser(description='Regularization-Pruning PyTorch')
 parser.add_argument('--data', metavar='DIR', # @mst: 'data' -> '--data'
                     help='path to dataset')
 parser.add_argument('--dataset',
@@ -69,7 +69,7 @@ from model import num_layers, is_single_branch
 pjoin = os.path.join
 
 # routine params
-parser.add_argument('--project_name', type=str, default="")
+parser.add_argument('--project_name', '--experiment_name', dest='project_name', type=str, default="")
 parser.add_argument('--debug', action="store_true")
 parser.add_argument('--screen_print', action="store_true")
 parser.add_argument('--note', type=str, default='', help='experiment note')

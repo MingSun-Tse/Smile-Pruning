@@ -57,7 +57,7 @@ def exact_isometry_based_on_existing_weights_delta(model, act, print=print):
             print('Finished isometry for linear layer "%s"' % name)
 
 def reinit_model(model, args, mask, print):
-    if args.reinit in ['default', 'kaiming_normal']:
+    if args.reinit in ['default', 'kaiming_normal']: # Note this default is NOT pytorch default init scheme!
         model.apply(_weights_init) # completely reinit weights via 'kaiming_normal'
         print("==> Reinit model: default ('kaiming_normal' for Conv/FC; 0 mean, 1 std for BN)")
 
@@ -75,6 +75,13 @@ def reinit_model(model, args, mask, print):
     elif args.reinit == 'approximate_isometry': # A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020)
         approximate_isometry_optimize(model, mask=mask, lr=args.lr_AI, n_iter=10000, print=print) # 10000 refers to the paper above; lr in the paper is 0.1, but not converged here
         print("==> Reinit model: approximate_isometry")
+    
+    elif args.reinit in ['pth_reset']:
+        learnable_modules = (nn.Conv2d, nn.Linear, nn.BatchNorm2d)
+        for _, module in model.named_modules():
+            if isinstance(module, learnable_modules):
+                module.reset_parameters()
+        print('==> Reinit model: use pytorch reset_parameters()')
     else:
         raise NotImplementedError
     return model

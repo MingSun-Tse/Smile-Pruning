@@ -25,7 +25,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 
 # --- @mst
-import copy
+import copy, math
 import numpy as np
 from importlib import import_module
 from data import Data
@@ -441,9 +441,10 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
             train_sampler.set_epoch(epoch)
         
         # @mst: use our own lr scheduler
-        lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
-        if print_log:
-            logprint("==> Set lr = %s @ Epoch %d " % (lr, epoch))
+        if not hasattr(args, 'advanced_lr'): # 'advanced_lr' can override 'lr_scheduler' and 'adjust_learning_rate'
+            lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
+            if print_log:
+                logprint("==> Set lr = %s @ Epoch %d " % (lr, epoch))
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
@@ -546,6 +547,10 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
         if args.gpu is not None:
             images = images.cuda(args.gpu, non_blocking=True)
         target = target.cuda(args.gpu, non_blocking=True)
+
+        if hasattr(args, 'advanced_lr'):
+            lr = adjust_learning_rate_v2(optimizer, epoch, i, len(train_loader))
+            if i == 10: logprint(f'==> Set LR to {lr:.6f} Epoch {epoch} Iter {i}')
 
         # compute output
         output = model(images)
@@ -684,6 +689,35 @@ def apply_mask_forward(model):
     for name, m in model.named_modules():
         if name in mask:
             m.weight.data.mul_(mask[name])
+
+def adjust_learning_rate_v2(optimizer, epoch, iteration, num_iter):
+    '''More advanced LR scheduling. Refers to d-li14 MobileNetV2 ImageNet implementation:
+    https://github.com/d-li14/mobilenetv2.pytorch/blob/1733532bd43743442077326e1efc556d7cfd025d/imagenet.py#L374
+    '''
+    assert hasattr(args, 'advanced_lr')
+    
+    warmup_iter = args.advanced_lr.warmup_epoch * num_iter # num_iter: num_iter_per_epoch
+    current_iter = iteration + epoch * num_iter
+    max_iter = args.epochs * num_iter
+
+    if epoch < args.advanced_lr.warmup_epoch:
+        lr = args.lr * current_iter / warmup_iter
+    else:
+        if args.advanced_lr.lr_decay == 'step':
+            lr = args.lr * (args.advanced_lr.gamma ** ((current_iter - warmup_iter) / (max_iter - warmup_iter)))
+        elif args.advanced_lr.lr_decay == 'cos':
+            lr = args.lr * (1 + math.cos(math.pi * (current_iter - warmup_iter) / (max_iter - warmup_iter))) / 2
+        elif args.advanced_lr.lr_decay == 'linear':
+            lr = args.lr * (1 - (current_iter - warmup_iter) / (max_iter - warmup_iter))
+        elif args.advanced_lr.lr_decay == 'schedule':
+            count = sum([1 for s in args.advanced_lr.schedule if s <= epoch])
+            lr = args.lr * pow(args.advanced_lr.gamma, count)
+        else:
+            raise ValueError('Unknown lr mode {}'.format(args.advanced_lr.lr_decay))
+    
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return lr
 
 if __name__ == '__main__':
     main()

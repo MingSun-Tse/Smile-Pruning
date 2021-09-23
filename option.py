@@ -1,6 +1,7 @@
 import torchvision.models as models
 import argparse
 import sys
+from utils import update_args
 
 
 model_names = sorted(name for name in models.__dict__
@@ -162,6 +163,12 @@ parser.add_argument('--lr_ft_mini', type=str, default='',
 parser.add_argument('--epochs_mini', type=int, default=0,
         help='num of epochs in each iterative pruning cycle')
 
+# Advanced LR scheduling related
+parser.add_argument('--advanced_lr.ON', action="store_true")
+parser.add_argument('--advanced_lr.warmup_epoch', type=int, default=0)
+parser.add_argument('--advanced_lr.lr_decay', type=str, choices=['step', 'cos', 'linear', 'schedule'])
+
+
 args = parser.parse_args()
 args_tmp = {}
 for k, v in args._get_kwargs():
@@ -208,3 +215,5 @@ if args.method in ['L1_Iter']:
 args.copy_bn_w = True
 args.copy_bn_b = True
 args.reg_multiplier = 1
+
+args = update_args(args)

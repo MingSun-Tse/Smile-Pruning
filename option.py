@@ -165,10 +165,6 @@ parser.add_argument('--lr_ft_mini', type=str, default='',
 parser.add_argument('--epochs_mini', type=int, default=0,
         help='num of epochs in each iterative pruning cycle')
 
-# FixReg related
-parser.add_argument('--fixreg.ON', action='store_true')
-parser.add_argument('--fixreg.reg_interval', type=int, default=50000)
-
 args = parser.parse_args()
 
 # parse for layer-wise prune ratio

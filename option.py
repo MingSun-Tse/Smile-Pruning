@@ -1,5 +1,5 @@
 import torchvision.models as models
-import argparse
+import configargparse
 import sys
 from utils import update_args
 
@@ -8,7 +8,7 @@ model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
 
-parser = argparse.ArgumentParser(description='Regularization-Pruning PyTorch')
+parser = configargparse.ArgumentParser(description='Regularization-Pruning PyTorch')
 parser.add_argument('--data', metavar='DIR', # @mst: 'data' -> '--data'
                     help='path to dataset')
 parser.add_argument('--dataset',
@@ -70,7 +70,7 @@ from model import num_layers, is_single_branch
 pjoin = os.path.join
 
 # routine params
-parser.add_argument('--project_name', type=str, default="")
+parser.add_argument('--project_name', '--experiment_name', dest='project_name', type=str, default="")
 parser.add_argument('--debug', action="store_true")
 parser.add_argument('--screen_print', action="store_true")
 parser.add_argument('--note', type=str, default='', help='experiment note')
@@ -90,7 +90,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
+parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
         help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--index_layer', type=str, default="numbers", choices=['numbers', 'name_matching'],
@@ -101,7 +101,9 @@ parser.add_argument('--lr_ft', type=str, default="{0:0.01,30:0.001,60:0.0001,75:
 parser.add_argument('--data_path', type=str, default="./data")
 parser.add_argument('--wg', type=str, default="filter", choices=['filter', 'channel', 'weight'])
 parser.add_argument('--pick_pruned', type=str, default='min', choices=['min', 'max', 'rand'], help='the criterion to select weights to prune')
-parser.add_argument('--reinit', type=str, default='', help='before finetuning, the pruned model will be reinited')
+parser.add_argument('--reinit', type=str, default='', choices=['', 'default', 'pth_reset', 'kaiming_normal', 'kaiming_normal', 'orth', 
+        'exact_isometry_from_scratch', 'exact_isometry_based_on_existing', 'exact_isometry_based_on_existing_delta', 'approximate_isometry'],
+        help='before finetuning, the pruned model will be reinited')
 parser.add_argument('--not_use_bn', dest='use_bn', default=True, action="store_false", help='if use BN in the network')
 parser.add_argument('--block_loss_grad', action="store_true", help="block the grad from loss, only apply weight decay")
 parser.add_argument('--save_mag_reg_log', action="store_true", help="save log of L1-norm of filters wrt reg")
@@ -117,7 +119,7 @@ parser.add_argument('--ft_in_oracle_pruning', action="store_true")
 parser.add_argument('--last_n_epoch', type=int, default=5, help='in correlation analysis, collect the last_n_epoch loss and average them')
 parser.add_argument('--jsv_loop', type=int, default=0, help="num of batch loops when checking Jacobian singuar values")
 parser.add_argument('--jsv_rand_data', action="store_true", help='if use data in random order to check JSV')
-parser.add_argument('--init', type=str, default='default', help="weight initialization scheme")
+parser.add_argument('--init', type=str, default='default', help="parameter initialization scheme")
 parser.add_argument('--activation', type=str, default='relu', help="activation function", choices=['relu', 'leaky_relu', 'linear', 'tanh', 'sigmoid'])
 parser.add_argument('--lr_AI', type=float, default=0.001, help="lr in approximate_isometry_optimize")
 parser.add_argument('--solver', type=str, default='SGD')
@@ -170,16 +172,6 @@ parser.add_argument('--advanced_lr.lr_decay', type=str, choices=['step', 'cos', 
 
 
 args = parser.parse_args()
-args_tmp = {}
-for k, v in args._get_kwargs():
-    args_tmp[k] = v
-
-# Above is the default setting. But if we explicitly assign new value for some arg in the shell script, 
-# the following will adjust the arg to the assigned value.
-script = " ".join(sys.argv)
-for k, v in args_tmp.items():
-    if k in script:
-        args.__dict__[k] = v
 
 # parse for layer-wise prune ratio
 # stage_pr is a list of float, skip_layers is a list of strings

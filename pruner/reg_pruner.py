@@ -121,23 +121,6 @@ class Pruner(MetaPruner):
             w_abs = m.weight.abs().flatten()
         return w_abs
 
-    def _fix_reg(self, m, name):
-        if self.pr[name] == 0:
-            return True
-        if self.args.wg != 'weight':
-            self._update_mag_ratio(m, name, self.w_abs[name])
-
-        pruned = self.pruned_wg[name]
-        if self.args.wg == "channel":
-            self.reg[name][:, pruned] = self.args.reg_upper_limit
-        elif self.args.wg == "filter":
-            self.reg[name][pruned, :] = self.args.reg_upper_limit
-        elif self.args.wg == 'weight':
-            self.reg[name][pruned] = self.args.reg_upper_limit
-
-        finish_update_reg = self.total_iter > self.args.fix_reg_interval
-        return finish_update_reg
-
     def _greg_1(self, m, name):
         if self.pr[name] == 0:
             return True
@@ -307,9 +290,7 @@ class Pruner(MetaPruner):
                 
                 # update reg functions, two things: 
                 # (1) update reg of this layer (2) determine if it is time to stop update reg
-                if self.args.method == "FixReg":
-                    finish_update_reg = self._fix_reg(m, name)
-                elif self.args.method == "GReg-1":
+                if self.args.method == "GReg-1":
                     finish_update_reg = self._greg_1(m, name)
                 elif self.args.method == "GReg-2":
                     finish_update_reg = self._greg_2(m, name)

@@ -1,6 +1,7 @@
 import torchvision.models as models
 import configargparse
 import sys
+from utils import update_args
 
 
 model_names = sorted(name for name in models.__dict__
@@ -89,7 +90,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
+parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
         help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--index_layer', type=str, default="numbers", choices=['numbers', 'name_matching'],
@@ -164,17 +165,11 @@ parser.add_argument('--lr_ft_mini', type=str, default='',
 parser.add_argument('--epochs_mini', type=int, default=0,
         help='num of epochs in each iterative pruning cycle')
 
-args = parser.parse_args()
-args_tmp = {}
-for k, v in args._get_kwargs():
-    args_tmp[k] = v
+# FixReg related
+parser.add_argument('--fixreg.ON', action='store_true')
+parser.add_argument('--fixreg.reg_interval', type=int, default=50000)
 
-# Above is the default setting. But if we explicitly assign new value for some arg in the shell script, 
-# the following will adjust the arg to the assigned value.
-script = " ".join(sys.argv)
-for k, v in args_tmp.items():
-    if k in script:
-        args.__dict__[k] = v
+args = parser.parse_args()
 
 # parse for layer-wise prune ratio
 # stage_pr is a list of float, skip_layers is a list of strings
@@ -210,3 +205,5 @@ if args.method in ['L1_Iter']:
 args.copy_bn_w = True
 args.copy_bn_b = True
 args.reg_multiplier = 1
+
+args = update_args(args)

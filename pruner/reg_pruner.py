@@ -31,7 +31,7 @@ class Pruner(MetaPruner):
         
         # prune_init, to determine the pruned weights
         # this will update the 'self.kept_wg' and 'self.pruned_wg' 
-        if self.args.method in ['GReg-1', 'GReg-2']:
+        if self.args.method in ['GReg-1', 'GReg-2', 'FixReg']:
             self._get_kept_wg_L1()
         for k, v in self.pruned_wg.items():
             self.pruned_wg_L1[k] = v
@@ -135,7 +135,7 @@ class Pruner(MetaPruner):
         elif self.args.wg == 'weight':
             self.reg[name][pruned] = self.args.reg_upper_limit
 
-        finish_update_reg = self.total_iter > self.args.fix_reg_interval
+        finish_update_reg = self.total_iter > self.args.fixreg.reg_interval
         return finish_update_reg
 
     def _greg_1(self, m, name):
@@ -307,7 +307,7 @@ class Pruner(MetaPruner):
                 
                 # update reg functions, two things: 
                 # (1) update reg of this layer (2) determine if it is time to stop update reg
-                if self.args.method == "FixReg":
+                if self.args.method == 'FixReg':
                     finish_update_reg = self._fix_reg(m, name)
                 elif self.args.method == "GReg-1":
                     finish_update_reg = self._greg_1(m, name)

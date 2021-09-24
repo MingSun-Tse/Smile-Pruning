@@ -266,6 +266,7 @@ def main_worker(gpu, ngpus_per_node, args):
         
     # --- @mst: Structured pruning is basically equivalent to providing a new weight initialization before finetune,
     # so just before training, conduct pruning to obtain a new model.
+    pruner = None
     if args.method:
         if args.dataset in ['imagenet', 'imagenet_subset_200']:
             # imagenet training costs too much time, so we use a smaller batch size for pruning training
@@ -280,7 +281,7 @@ def main_worker(gpu, ngpus_per_node, args):
         n_flops_original_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
 
         # init some variables for pruning
-        prune_state, pruner = 'prune', None
+        prune_state = 'prune'
         if args.wg == 'weight':
             global mask
 
@@ -449,6 +450,9 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
 
+        if hasattr(args, 'advanced_lr'):
+            lr = args.advanced_lr.lr
+
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_loop:
             jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
@@ -550,6 +554,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
 
         if hasattr(args, 'advanced_lr'):
             lr = adjust_learning_rate_v2(optimizer, epoch, i, len(train_loader))
+            args.advanced_lr.lr = lr
             if i == 10: logprint(f'==> Set LR to {lr:.6f} Epoch {epoch} Iter {i}')
 
         # compute output

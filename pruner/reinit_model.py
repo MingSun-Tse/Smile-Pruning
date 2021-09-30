@@ -149,11 +149,21 @@ def orth_regularization_v5(w, pruned_wg):
     return loss
 
 def orth_regularization_v5_2(w, pruned_wg):
-    '''Compared to v5 for ablation study.
+    '''Implementation of "Kernel orthogonality for pruning". Compared to v5 for ablation study.
     '''
     w_ = w.view(w.size(0), -1)
     identity = torch.eye(w_.size(0)).cuda()
     for x in pruned_wg:
         identity[x, x] = 0
     loss = F.mse_loss(torch.matmul(w_, w_.t()), identity, reduction='mean')
+    return loss
+
+def orth_regularization_v6(w, pruned_wg, penalty_map):
+    '''Based on v5_2. Apply different penalty strength to different gram elements'''
+    w_ = w.view(w.size(0), -1)
+    identity = torch.eye(w_.size(0)).cuda()
+    for x in pruned_wg:
+        identity[x, x] = 0
+    loss_map = F.mse_loss(torch.matmul(w_, w_.t()), identity, reduction='none') * penalty_map
+    loss = loss_map.mean()
     return loss

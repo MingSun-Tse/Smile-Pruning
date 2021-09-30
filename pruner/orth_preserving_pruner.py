@@ -5,6 +5,7 @@ import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
 from .reinit_model import reinit_model, orth_regularization, orth_regularization_v3, orth_regularization_v4, deconv_orth_dist
 from .reinit_model import orth_regularization_v5, orth_regularization_v5_2
+from .reinit_model import orth_regularization_v6
 from utils import plot_weights_heatmap, Timer
 import matplotlib.pyplot as plt
 from collections import OrderedDict
@@ -378,6 +379,15 @@ class Pruner(MetaPruner):
                                 if self.pr[name] > 0:
                                     loss_opp += orth_regularization_v5_2(module.weight, pruned_wg=self.pruned_wg[name])
                                     lw_opp = self.args.lw_opp * self.reg[name].max()
+                            
+                            elif self.args.opp_scheme in ['6', 'v6']:
+                                if self.pr[name] > 0:
+                                    n_filters = module.weight.data.shape[0]
+                                    penalty_map = torch.ones(n_filters, n_filters).cuda() * self.args.lw_orth_reg
+                                    penalty_map[self.pruned_wg[name], :] = self.args.lw_opp * self.reg[name].max()
+                                    penalty_map[:, self.pruned_wg[name]] = self.args.lw_opp * self.reg[name].max()
+                                    loss_opp += orth_regularization_v6(module.weight, self.pruned_wg[name], penalty_map)
+                                    lw_opp = 1 # to maintain interface
                             else:
                                 raise NotImplementedError
 

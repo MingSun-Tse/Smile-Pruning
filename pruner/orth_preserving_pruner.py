@@ -174,15 +174,7 @@ class Pruner(MetaPruner):
         else:
             raise NotImplementedError
 
-        # when all layers are pushed hard enough, stop
-        if self.args.wg == 'weight': # for weight, do not use the magnitude ratio condition, because 'hist_mag_ratio' is not updated, too costly
-            finish_update_reg = False
-        else:
-            finish_update_reg = True
-            for k in self.hist_mag_ratio:
-                if self.hist_mag_ratio[k] < self.args.mag_ratio_limit:
-                    finish_update_reg = False
-        return finish_update_reg or self.reg[name].max() > self.args.reg_upper_limit
+        return self.reg[name].max() > self.args.reg_upper_limit
 
     def _update_reg(self):
         for name, m in self.model.named_modules():

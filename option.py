@@ -171,6 +171,10 @@ parser.add_argument('--advanced_lr.warmup_epoch', type=int, default=0)
 parser.add_argument('--advanced_lr.lr_decay', type=str, choices=['step', 'cos', 'linear', 'schedule'])
 
 
+# This code base also serve to quick-check properties of deep neural networks. These functionalities are summarized here.
+parser.add_argument('--utils.ON', action="store_true")
+parser.add_argument('--utils.check_kernel_spatial_dist', action="store_true")
+
 args = parser.parse_args()
 
 # parse for layer-wise prune ratio

@@ -263,6 +263,11 @@ def main_worker(gpu, ngpus_per_node, args):
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
         logprint('Acc1 %.4f Acc5 %.4f Loss_test %.4f' % (acc1, acc5, loss_test))
         return
+    
+    if hasattr(args, 'utils') and args.utils.check_kernel_spatial_dist:
+        from utils import check_kernel_spatial_dist
+        check_kernel_spatial_dist(model)
+        exit()
         
     # --- @mst: Structured pruning is basically equivalent to providing a new weight initialization before finetune,
     # so just before training, conduct pruning to obtain a new model.

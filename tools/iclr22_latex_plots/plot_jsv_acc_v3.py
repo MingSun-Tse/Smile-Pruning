@@ -1,4 +1,4 @@
-import numpy as np, os, sys
+import numpy as np, os, sys, copy
 import matplotlib.pyplot as plt
 plt.rcParams["font.family"] = "Times New Roman" # set fonts globally
 import argparse
@@ -19,6 +19,7 @@ parser.add_argument('--exp_ids', type=str, default="", help='234512,230121')
 parser.add_argument('--log_file', type=str, default="log.txt")
 parser.add_argument('--legends', type=str, default='', help="lr=0.001,lr=0.01")
 parser.add_argument('--x_step', type=int, default=1, help="the interval of x")
+parser.add_argument('--ylim', type=str)
 args = parser.parse_args()
 
 logger = Logger(args)
@@ -36,9 +37,13 @@ colors = ['red', 'blue']
 linestyles = [':', '-', '-.', '--']
 markers = []
 legends = args.legends.split('/')
+label_fs = 12
+legend_fs = 12
+ticklabel_fs = 12
 
 # set up fig and needed axes
 fig, axes = plt.subplots(figsize=(3.5, 3.5), nrows=2, ncols=1)
+# fig.subplots_adjust(hspace=0.05)  # adjust space between axes
 ax1, ax2 = axes
 
 # set background, spines, etc.
@@ -68,21 +73,12 @@ def one_exp_plot(log_file, ix):
 
     # plot ax1: JSV
     ax1.plot(jsv_epoch[::interval], jsv[::interval], label=legends[ix], color=colors[0], linestyle=linestyles[ix])
-    ax1.set_ylabel('Mean JSV', fontsize=8)
+    ax1.set_ylabel('Mean JSV', fontsize=label_fs)
 
     # plot ax2: Test accuracy
     ax2.plot(test_acc_epoch[::interval], test_acc[::interval], label=legends[ix], color=colors[1], linestyle=linestyles[ix])
-    ax2.set_xlabel('Epoch', fontsize=8); ax2.set_ylabel('Test accuracy (%)', fontsize=8)
+    ax2.set_xlabel('Epoch', fontsize=label_fs); ax2.set_ylabel('Test accuracy (%)', fontsize=label_fs)
 
-    # make the zoom-in plot
-    x1, x2 = 0, 90
-    y1, y2 = 80, 93
-    axins = zoomed_inset_axes(ax, 3, bbox_to_anchor=[45, 60])
-    axins.set_xlim(x1, x2)
-    axins.set_ylim(y1, y2)
-    plt.xticks(visible=False)
-    plt.yticks(visible=False)
-    mark_inset(ax2, axins, loc1=1, loc2=2, fc="none", ec="0.5")
 
 # ------------------------------------------ main function to deal with multi-experiment log files
 exp_ids = args.exp_ids.split('/')
@@ -99,10 +95,17 @@ for exp_id in exp_ids:
     one_exp_plot(log_file, ix)
 
 # set legend
-ax1.legend(frameon=False) # loc='lower right'
-ax2.legend(frameon=False)
-ax1.set_ylim([0, 6])
-ax2.set_ylim([20, 93])
+ax1.legend(frameon=False, fontsize=legend_fs) # loc='lower right'
+ax2.legend(frameon=False, fontsize=legend_fs)
+
+# set tick label size
+ax1.tick_params(axis='both', which='major', labelsize=ticklabel_fs)
+ax2.tick_params(axis='both', which='major', labelsize=ticklabel_fs)
+
+# set ylim
+if args.ylim:
+    y1, y2 = [float(i) for i in args.ylim.split(',')]
+    ax2.set_ylim([y1, y2])
 
 # save
 out = '%s/%s.pdf' % (logger.log_path, ExpID)

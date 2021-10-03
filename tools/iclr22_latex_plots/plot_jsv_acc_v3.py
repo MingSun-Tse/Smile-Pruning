@@ -37,9 +37,9 @@ colors = ['red', 'blue']
 linestyles = [':', '-', '-.', '--']
 markers = []
 legends = args.legends.split('/')
-label_fs = 12
+label_fs = 14
 legend_fs = 12
-ticklabel_fs = 12
+ticklabel_fs = 14
 
 # set up fig and needed axes
 fig, axes = plt.subplots(figsize=(3.5, 3.5), nrows=2, ncols=1)
@@ -77,7 +77,7 @@ def one_exp_plot(log_file, ix):
 
     # plot ax2: Test accuracy
     ax2.plot(test_acc_epoch[::interval], test_acc[::interval], label=legends[ix], color=colors[1], linestyle=linestyles[ix])
-    ax2.set_xlabel('Epoch', fontsize=label_fs); ax2.set_ylabel('Test accuracy (%)', fontsize=label_fs)
+    ax2.set_xlabel('Epoch', fontsize=label_fs); ax2.set_ylabel('Test accuracy', fontsize=label_fs)
 
 
 # ------------------------------------------ main function to deal with multi-experiment log files

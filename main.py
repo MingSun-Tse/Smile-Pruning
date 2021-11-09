@@ -29,7 +29,7 @@ import copy, math
 import numpy as np
 from importlib import import_module
 from data import Data
-from logger import Logger
+from smilelogging import Logger
 from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
 from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
 from utils import Dataset_lmdb_batch
@@ -43,7 +43,7 @@ from option import args
 pjoin = os.path.join
 
 logger = Logger(args)
-logprint = logger.log_printer.logprint
+logprint = print
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
 timer = Timer(args.epochs)

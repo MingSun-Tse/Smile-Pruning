@@ -8,3 +8,4 @@ Pillow==8.3.1
 PyYAML==5.4.1
 scikit_learn==0.24.2
 torchsummary==1.5.1
+smilelogging

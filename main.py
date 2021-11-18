@@ -435,13 +435,12 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
-
     # set lr finetune schduler for finetune
     if args.method:
         assert args.lr_ft is not None
         lr_scheduler = PresetLRScheduler(args.lr_ft)
     
-    acc1_list, loss_train_list, loss_test_list = [], [], []
+    acc1_list, loss_train_list, loss_test_list, last_lr  = [], [], [], 0
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -450,12 +449,28 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         if not hasattr(args, 'advanced_lr'): # 'advanced_lr' can override 'lr_scheduler' and 'adjust_learning_rate'
             lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
             if print_log:
-                logprint("==> Set lr = %s @ Epoch %d " % (lr, epoch))
+                logprint("==> Set lr = %s @ Epoch %d begins" % (lr, epoch))
+        
+        if last_lr == 0: last_lr = lr # init last_lr
+        if lr != last_lr:
+            state = {'epoch': epoch, # this is to save the model of last epoch
+                    'arch': args.arch,
+                    'model': model,
+                    'state_dict': model.state_dict(),
+                    'acc1': acc1,
+                    'acc5': acc5,
+                    'optimizer': optimizer.state_dict(),
+                    'ExpID': logger.ExpID,
+                    'prune_state': 'finetune',
+            }
+            if args.wg == 'weight':
+                state['mask'] = mask 
+            save_model(state, mark=f'lr{last_lr}_epoch{epoch}')
+            print(f'==> Save ckpt at the last epoch ({epoch}) of LR {last_lr}')
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
-
-        if hasattr(args, 'advanced_lr'):
+        if hasattr(args, 'advanced_lr'): # advanced_lr will adjust lr inside the train fn
             lr = args.advanced_lr.lr
 
         # @mst: check Jacobian singular value (JSV)

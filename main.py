@@ -372,7 +372,7 @@ def main_worker(gpu, ngpus_per_node, args):
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args) # test set
             logstr = []
             logstr += ["Acc1 %.4f Acc5 %.4f Loss_test %.4f" % (acc1, acc5, loss_test)]
-            if args.dataset not in ['imagenet']: # too costly, not test
+            if args.dataset not in ['imagenet'] and args.test_trainset: # too costly, not test
                 acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args, noisy_model_ensemble=args.model_noise_std) # train set
                 logstr += ["Acc1_train %.4f Acc5_train %.4f Loss_train %.4f" % (acc1_train, acc5_train, loss_train)]
             logstr += ["(test_time %.2fs) Just got pruned model, about to finetune" %  (time.time() - t1)]
@@ -494,7 +494,7 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
 
         # evaluate on validation set
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args) # @mst: added acc5
-        if args.dataset != 'imagenet': # too costly, not test for now
+        if args.dataset not in ['imagenet'] and args.test_trainset: # too costly, not test for now
             acc1_train, acc5_train, loss_train = validate(train_loader, model, criterion, args)
         else:
             acc1_train, acc5_train, loss_train = -1, -1, -1

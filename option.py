@@ -12,7 +12,7 @@ parser = configargparse.ArgumentParser(description='Regularization-Pruning PyTor
 parser.add_argument('--data', metavar='DIR', # @mst: 'data' -> '--data'
                     help='path to dataset')
 parser.add_argument('--dataset',
-                    help='dataset name', choices=['mnist', 'cifar10', 'cifar100', 'imagenet', 'imagenet_subset_200', 'tiny_imagenet'])
+                    help='dataset name', choices=['mnist', 'fmnist', 'cifar10', 'cifar100', 'imagenet', 'imagenet_subset_200', 'tiny_imagenet'])
 parser.add_argument('--use_lmdb', action='store_true',
                     help='use lmdb format data instead of images of .JPEG/.PNG etc.')
 parser.add_argument('-a', '--arch', metavar='ARCH', default='resnet18',
@@ -124,6 +124,7 @@ parser.add_argument('--activation', type=str, default='relu', help="activation f
 parser.add_argument('--lr_AI', type=float, default=0.001, help="lr in approximate_isometry_optimize")
 parser.add_argument('--solver', type=str, default='SGD')
 parser.add_argument('--verbose', action="store_true", help='if true, print debug logs')
+parser.add_argument('--test_trainset', action="store_true")
 
 # GReg method related (default setting is for ImageNet):
 parser.add_argument('--batch_size_prune', type=int, default=64)

@@ -33,6 +33,7 @@ class Data(object):
 
 num_classes_dict = {
     'mnist': 10,
+    'fmnist': 10,
     'cifar10': 10,
     'cifar100': 100,
     'imagenet': 1000,
@@ -42,6 +43,7 @@ num_classes_dict = {
 
 img_size_dict = {
     'mnist': 32,
+    'fmnist': 32,
     'cifar10': 32,
     'cifar100': 32,
     'imagenet': 224,

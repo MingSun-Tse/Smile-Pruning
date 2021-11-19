@@ -450,28 +450,29 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
             lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
             if print_log:
                 logprint("==> Set lr = %s @ Epoch %d begins" % (lr, epoch))
-        
-        if last_lr == 0: last_lr = lr # init last_lr
-        if lr != last_lr:
-            state = {'epoch': epoch, # this is to save the model of last epoch
-                    'arch': args.arch,
-                    'model': model,
-                    'state_dict': model.state_dict(),
-                    'acc1': acc1,
-                    'acc5': acc5,
-                    'optimizer': optimizer.state_dict(),
-                    'ExpID': logger.ExpID,
-                    'prune_state': 'finetune',
-            }
-            if args.wg == 'weight':
-                state['mask'] = mask 
-            save_model(state, mark=f'lr{last_lr}_epoch{epoch}')
-            print(f'==> Save ckpt at the last epoch ({epoch}) of LR {last_lr}')
+
+            # save model if LR just changed
+            if last_lr !=0 and lr != last_lr:
+                state = {'epoch': epoch, # this is to save the model of last epoch
+                        'arch': args.arch,
+                        'model': model,
+                        'state_dict': model.state_dict(),
+                        'acc1': acc1,
+                        'acc5': acc5,
+                        'optimizer': optimizer.state_dict(),
+                        'ExpID': logger.ExpID,
+                        'prune_state': 'finetune',
+                }
+                if args.wg == 'weight':
+                    state['mask'] = mask 
+                save_model(state, mark=f'lr{last_lr}_epoch{epoch}')
+                print(f'==> Save ckpt at the last epoch ({epoch}) of LR {last_lr}')
 
         # train for one epoch
         train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
         if hasattr(args, 'advanced_lr'): # advanced_lr will adjust lr inside the train fn
             lr = args.advanced_lr.lr
+        last_lr = lr
 
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_loop:

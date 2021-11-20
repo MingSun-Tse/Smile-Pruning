@@ -43,7 +43,6 @@ from option import args
 pjoin = os.path.join
 
 logger = Logger(args)
-logprint = print
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
 timer = Timer(args.epochs)
@@ -123,7 +122,7 @@ def main_worker(gpu, ngpus_per_node, args):
             lmdb_path_train = traindir + '/lmdb'
             lmdb_path_val = valdir + '/lmdb'
             assert os.path.exists(lmdb_path_train) and os.path.exists(lmdb_path_val)
-            logprint(f'Loading data in LMDB format: "{lmdb_path_train}" and "{lmdb_path_val}"')
+            print(f'Loading data in LMDB format: "{lmdb_path_train}" and "{lmdb_path_val}"')
             train_dataset = Dataset_lmdb_batch(lmdb_path_train, transforms_train)
             val_dataset = Dataset_lmdb_batch(lmdb_path_val, transforms_val)
         else:
@@ -145,7 +144,7 @@ def main_worker(gpu, ngpus_per_node, args):
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
 
     if args.gpu is not None:
-        logprint("Use GPU: {} for training".format(args.gpu))
+        print("Use GPU: {} for training".format(args.gpu))
 
     if args.distributed:
         if args.dist_url == "env://" and args.rank == -1:
@@ -162,16 +161,16 @@ def main_worker(gpu, ngpus_per_node, args):
     num_channels = 1 if args.dataset == 'mnist' else 3
     if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
         if args.pretrained:
-            logprint("=> using pre-trained model '{}'".format(args.arch))
+            print("=> using pre-trained model '{}'".format(args.arch))
             model = models.__dict__[args.arch](num_classes=num_classes, pretrained=True)
         else:
-            logprint("=> creating model '{}'".format(args.arch))
+            print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch](num_classes=num_classes)
     else: # @mst: added non-imagenet models
         model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn)
         if args.init in ['orth', 'exact_isometry_from_scratch']:
             model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation))
-            logprint("==> Use weight initialization: 'orthogonal_'. Activation: %s" % args.activation)
+            print("==> Use weight initialization: 'orthogonal_'. Activation: %s" % args.activation)
 
     # @mst: save the model after initialization if necessary
     if args.save_init_model:
@@ -223,7 +222,7 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.test_pretrained:
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
             logstr += f". Its accuracy: {acc1:.4f}"
-        logprint(logstr)
+        print(logstr)
         
     # @mst: print base model arch
     netprint(model, comment='base model arch')
@@ -238,7 +237,7 @@ def main_worker(gpu, ngpus_per_node, args):
     best_acc1, best_acc1_epoch = 0, 0
     if args.resume:
         if os.path.isfile(args.resume):
-            logprint("=> loading checkpoint '{}'".format(args.resume))
+            print("=> loading checkpoint '{}'".format(args.resume))
             if args.gpu is None:
                 checkpoint = torch.load(args.resume)
             else:
@@ -252,16 +251,16 @@ def main_worker(gpu, ngpus_per_node, args):
                 best_acc1 = best_acc1.to(args.gpu)
             model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
-            logprint("=> loaded checkpoint '{}' (epoch {})"
+            print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
-            logprint("=> no checkpoint found at '{}'".format(args.resume))
+            print("=> no checkpoint found at '{}'".format(args.resume))
 
     cudnn.benchmark = True
 
     if args.evaluate:
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-        logprint('Acc1 %.4f Acc5 %.4f Loss_test %.4f' % (acc1, acc5, loss_test))
+        print('Acc1 %.4f Acc5 %.4f Loss_test %.4f' % (acc1, acc5, loss_test))
         return
     
     if hasattr(args, 'utils') and args.utils.check_kernel_spatial_dist:
@@ -298,16 +297,16 @@ def main_worker(gpu, ngpus_per_node, args):
                 model = state['model'].cuda()
                 model.load_state_dict(state['state_dict'])
                 if args.solver == 'Adam':
-                    logprint('==> Using Adam optimizer')
+                    print('==> Using Adam optimizer')
                     optimizer = torch.optim.Adam(model.parameters(), args.lr)
                 else:
-                    logprint('==> Using SGD optimizer')
+                    print('==> Using SGD optimizer')
                     optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                                 momentum=args.momentum,
                                                 weight_decay=args.weight_decay)
                 optimizer.load_state_dict(state['optimizer'])
                 args.start_epoch = state['epoch']
-                logprint("==> Resume model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+                print("==> Resume model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                         args.resume_path, args.start_epoch, prune_state))
             else:
                 raise NotImplementedError
@@ -318,19 +317,19 @@ def main_worker(gpu, ngpus_per_node, args):
             model = state['model'].cuda()
             model.load_state_dict(state['state_dict'])
             prune_state = 'finetune'
-            logprint("==> Load model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
+            print("==> Load model successfully: '{}'. Epoch = {}. prune_state = '{}'".format(
                     args.directly_ft_weights, args.start_epoch, prune_state))
 
             if 'mask' in state:
                 mask = state['mask']
                 apply_mask_forward(model)
-                logprint('==> Mask restored')
+                print('==> Mask restored')
 
         if prune_state in ['prune']:
             # feature analyze
             if args.feat_analyze:
-                logprint('analyzing feature of conv/fc layers (before pruning):')
-                FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
+                print('analyzing feature of conv/fc layers (before pruning):')
+                FeatureAnalyzer(model, val_loader, criterion=criterion, print=print)
 
             class passer: pass # to pass arguments
             passer.test = validate
@@ -352,20 +351,20 @@ def main_worker(gpu, ngpus_per_node, args):
             if args.wg == 'weight':
                 mask = pruner.mask
                 apply_mask_forward(model)
-                logprint('==> Apply masks before finetuning to ensure the pruned weights are zero')
+                print('==> Apply masks before finetuning to ensure the pruned weights are zero')
             netprint(model, comment='model that was just pruned')
             # ***********************************************************
 
             # get model statistics of the pruned model
             n_params_now_v2 = get_n_params_(model)
             n_flops_now_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
-            logprint("==> n_params_original_v2: {:>9.6f}M, n_flops_original_v2: {:>9.6f}G".format(n_params_original_v2/1e6, n_flops_original_v2/1e9))
-            logprint("==> n_params_now_v2:      {:>9.6f}M, n_flops_now_v2:      {:>9.6f}G".format(n_params_now_v2/1e6, n_flops_now_v2/1e9))
+            print("==> n_params_original_v2: {:>9.6f}M, n_flops_original_v2: {:>9.6f}G".format(n_params_original_v2/1e6, n_flops_original_v2/1e9))
+            print("==> n_params_now_v2:      {:>9.6f}M, n_flops_now_v2:      {:>9.6f}G".format(n_params_now_v2/1e6, n_flops_now_v2/1e9))
             ratio_param = (n_params_original_v2 - n_params_now_v2) / n_params_original_v2
             ratio_flops = (n_flops_original_v2 - n_flops_now_v2) / n_flops_original_v2
             compression_ratio = 1.0 / (1 - ratio_param)
             speedup_ratio = 1.0 / (1 - ratio_flops)
-            logprint("==> reduction ratio -- params: {:>5.2f}% (compression ratio {:>.2f}x), flops: {:>5.2f}% (speedup ratio {:>.2f}x)".format(ratio_param*100, compression_ratio, ratio_flops*100, speedup_ratio))
+            print("==> reduction ratio -- params: {:>5.2f}% (compression ratio {:>.2f}x), flops: {:>5.2f}% (speedup ratio {:>.2f}x)".format(ratio_param*100, compression_ratio, ratio_flops*100, speedup_ratio))
         
             # test the just pruned model
             t1 = time.time()
@@ -394,31 +393,31 @@ def main_worker(gpu, ngpus_per_node, args):
 
             if args.feat_analyze:
                 if args.method in ['GReg-1', 'GReg-2']:
-                    logprint('analyzing feature of conv/fc layers (after reg, before removing weights):')
-                    FeatureAnalyzer(model_before_removing_weights, val_loader, criterion=criterion, print=logprint)
-                logprint('analyzing feature of conv/fc layers (just finished pruning):')
-                FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
+                    print('analyzing feature of conv/fc layers (after reg, before removing weights):')
+                    FeatureAnalyzer(model_before_removing_weights, val_loader, criterion=criterion, print=print)
+                print('analyzing feature of conv/fc layers (just finished pruning):')
+                FeatureAnalyzer(model, val_loader, criterion=criterion, print=print)
                 
     # ---
 
     # before finetuning, we may reinit the weights by some rule
     if args.reinit:
         mask = pruner.mask if args.wg == 'weight' else None
-        model = reinit_model(model, args=args, mask=mask, print=logprint)
+        model = reinit_model(model, args=args, mask=mask, print=print)
         acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
         accprint(f"Acc1 {acc1:.4f} Acc5 {acc5:.4f} Loss_test {loss_test:.4f} -- after reiniting the just pruned model")
         if args.feat_analyze:
-            logprint('analyzing feature of conv/fc layers (after reinit):')
-            FeatureAnalyzer(model, val_loader, criterion=criterion, print=logprint)
+            print('analyzing feature of conv/fc layers (after reinit):')
+            FeatureAnalyzer(model, val_loader, criterion=criterion, print=print)
 
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:
         if args.method in ['GReg-1', 'GReg-2']:
-            jsv, cn = get_jacobian_singular_values(model_before_removing_weights, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-            logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f -- model_before_removing_weights' % 
+            jsv, cn = get_jacobian_singular_values(model_before_removing_weights, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f -- model_before_removing_weights' % 
                 (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
-        jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-        logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f' % 
+        jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+        print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f' % 
             (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 
     # finetune
@@ -428,10 +427,10 @@ def main_worker(gpu, ngpus_per_node, args):
 def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=10, print_log=True):
     # since model is new, we need a new optimizer
     if args.solver == 'Adam':
-        logprint('==> Start to finetune: using Adam optimizer')
+        print('==> Start to finetune: using Adam optimizer')
         optimizer = torch.optim.Adam(model.parameters(), args.lr)
     else:
-        logprint('==> Start to finetune: using SGD optimizer')
+        print('==> Start to finetune: using SGD optimizer')
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
@@ -449,7 +448,7 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         if not hasattr(args, 'advanced_lr'): # 'advanced_lr' can override 'lr_scheduler' and 'adjust_learning_rate'
             lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
             if print_log:
-                logprint("==> Set lr = %s @ Epoch %d begins" % (lr, epoch))
+                print("==> Set lr = %s @ Epoch %d begins" % (lr, epoch))
 
             # save model if LR just changed
             if last_lr !=0 and lr != last_lr:
@@ -476,8 +475,8 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
 
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_loop:
-            jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=logprint, rand_data=args.jsv_rand_data)
-            logprint('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f' % 
+            jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f' % 
                 (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
 
         # @mst: check weights magnitude during finetune
@@ -513,7 +512,7 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         if print_log:
             accprint("Acc1 %.4f Acc5 %.4f Loss_test %.4f | Acc1_train %.4f Acc5_train %.4f Loss_train %.4f | Epoch %d (Best_Acc1 %.4f @ Best_Acc1_Epoch %d) lr %s" % 
                 (acc1, acc5, loss_test, acc1_train, acc5_train, loss_train, epoch, best_acc1, best_acc1_epoch, lr))
-            logprint('predicted finish time: %s' % timer())
+            print('predicted finish time: %s' % timer())
 
         ngpus_per_node = torch.cuda.device_count()
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
@@ -576,7 +575,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
         if hasattr(args, 'advanced_lr'):
             lr = adjust_learning_rate_v2(optimizer, epoch, i, len(train_loader))
             args.advanced_lr.lr = lr
-            if i == 10: logprint(f'==> Set LR to {lr:.6f} Epoch {epoch} Iter {i}')
+            if i == 10: print(f'==> Set LR to {lr:.6f} Epoch {epoch} Iter {i}')
 
         # compute output
         output = model(images)
@@ -607,7 +606,7 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
                         raise NotImplementedError
             loss += loss_orth_reg * args.lw_orth_reg
             if i % args.print_interval == 0:
-                logprint(f'loss_orth_reg (*{args.lw_orth_reg}) {loss_orth_reg:.10f} Epoch {epoch} Iter {i}')
+                print(f'loss_orth_reg (*{args.lw_orth_reg}) {loss_orth_reg:.10f} Epoch {epoch} Iter {i}')
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
@@ -647,7 +646,7 @@ def validate(val_loader, model, criterion, args, noisy_model_ensemble=False):
         for i in range(args.model_noise_num):
             noisy_model = add_noise_to_model(model, std=args.model_noise_std)
             model_ensemble.append(noisy_model)
-        logprint('==> added Gaussian noise to model weights (std=%s, num=%d)' % (args.model_noise_std, args.model_noise_num))
+        print('==> added Gaussian noise to model weights (std=%s, num=%d)' % (args.model_noise_std, args.model_noise_num))
     else:
         model_ensemble.append(model)
 
@@ -682,10 +681,10 @@ def validate(val_loader, model, criterion, args, noisy_model_ensemble=False):
                 progress.display(i)
 
         # TODO: this should also be done with the ProgressMeter
-        # logprint(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+        # print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
         #       .format(top1=top1, top5=top5))
         # @mst: commented because we will use another print outside 'validate'
-    # logprint("time compute: %.4f ms" % (np.mean(time_compute)*1000))
+    # print("time compute: %.4f ms" % (np.mean(time_compute)*1000))
 
     # change back to original model state if necessary
     if train_state:

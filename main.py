@@ -45,6 +45,7 @@ pjoin = os.path.join
 logger = Logger(args)
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
+print = logger.log_printer.logprint
 timer = Timer(args.epochs)
 # ---
 

@@ -42,6 +42,7 @@ from pruner.feat_analyze import FeatureAnalyzer
 from option import args
 pjoin = os.path.join
 
+original_print = print
 logger = Logger(args)
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
@@ -489,7 +490,7 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
                     mag_old = pruner.original_w_mag[name]
                     ratio = mag_now / mag_old
                     tmp = '[%2d] %25s -- mag_old = %.4f, mag_now = %.4f (%.2f)' % (ix, name, mag_old, mag_now, ratio)
-                    print(tmp, file=logger.logtxt, flush=True)
+                    original_print(tmp, file=logger.logtxt, flush=True)
                     if args.screen_print:
                         print(tmp)
 

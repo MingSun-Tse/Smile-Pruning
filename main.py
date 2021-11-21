@@ -415,12 +415,12 @@ def main_worker(gpu, ngpus_per_node, args):
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:
         if args.method in ['GReg-1', 'GReg-2']:
-            jsv, cn = get_jacobian_singular_values(model_before_removing_weights, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
-            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f -- model_before_removing_weights' % 
-                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
-        jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
-        print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f' % 
-            (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn)))
+            jsv, jsv_diff, cn = get_jacobian_singular_values(model_before_removing_weights, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f -- model_before_removing_weights' % 
+                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff)))
+        jsv, jsv_diff, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+        print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f' % 
+            (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff)))
 
     # finetune
     finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=num_classes)
@@ -477,9 +477,9 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
 
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_loop:
-            jsv, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
-            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f -- Epoch %d' % 
-                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), epoch))
+            jsv, jsv_diff, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f -- Epoch %d' % 
+                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff), epoch))
 
         # @mst: check weights magnitude during finetune
         if args.method in ['GReg-1', 'GReg-2'] and not isinstance(pruner, type(None)):

@@ -978,7 +978,7 @@ def compute_jacobian(inputs, output):
 	return torch.transpose(jacobian, dim0=0, dim1=1)
 
 def get_jacobian_singular_values(model, data_loader, num_classes, n_loop=20, print_func=print, rand_data=False):
-    jsv, condition_number = [], []
+    jsv, jsv_diff, condition_number = [], [], []
     if rand_data:
         picked_batch = np.random.permutation(len(data_loader))[:n_loop]
     else:
@@ -994,11 +994,12 @@ def get_jacobian_singular_values(model, data_loader, num_classes, n_loop=20, pri
             u, s, v = torch.svd(jacobian) # u: [batch_size, num_channels*input_width*input_height, num_classes], s: [batch_size, num_classes], v: [batch_size, num_channels*input_width*input_height, num_classes]
             s = s.data.cpu().numpy()
             jsv.append(s)
+            jsv_diff.append((s - 1) ** 2)
             condition_number.append(s.max(axis=1) / s.min(axis=1))
             print_func('[%3d/%3d] calculating Jacobian...' % (i, len(data_loader)))
     jsv = np.concatenate(jsv)
     condition_number = np.concatenate(condition_number)
-    return jsv, condition_number
+    return jsv, jsv_diff, condition_number
 
 def approximate_entropy(X, num_bins=10, esp=1e-30):
     '''X shape: [num_sample, n_var], numpy array.

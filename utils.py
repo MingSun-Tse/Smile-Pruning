@@ -24,11 +24,12 @@ def _weights_init(m):
             m.weight.data.fill_(1.0)
             m.bias.data.zero_()
 
-def _weights_init_orthogonal(m, act='relu'):
+def _weights_init_orthogonal(m, act='relu', scale=1):
     if isinstance(m, (nn.Conv2d, nn.Linear)):
         init.orthogonal_(m.weight, gain=init.calculate_gain(act))
         if m.bias is not None:
             m.bias.data.fill_(0)
+        m.weight.data.copy_(m.weight.data * scale)
     elif isinstance(m, nn.BatchNorm2d):
         if m.weight is not None:
             m.weight.data.fill_(1.0)

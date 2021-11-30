@@ -62,7 +62,7 @@ def reinit_model(model, args, mask, print):
         print("==> Reinit model: default ('kaiming_normal' for Conv/FC; 0 mean, 1 std for BN)")
 
     elif args.reinit in ['orth', 'exact_isometry_from_scratch']:
-        model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation)) # reinit weights via 'orthogonal_' from scratch
+        model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation, scale=args.reinit_scale)) # reinit weights via 'orthogonal_' from scratch
         print("==> Reinit model: exact_isometry ('orthogonal_' for Conv/FC; 0 mean, 1 std for BN)")
 
     elif args.reinit == 'exact_isometry_based_on_existing':

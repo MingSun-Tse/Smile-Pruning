@@ -177,6 +177,7 @@ parser.add_argument('--advanced_lr.lr_decay', type=str, choices=['step', 'cos', 
 # This code base also serve to quick-check properties of deep neural networks. These functionalities are summarized here.
 parser.add_argument('--utils.ON', action="store_true")
 parser.add_argument('--utils.check_kernel_spatial_dist', action="store_true")
+parser.add_argument('--utils.check_grad_norm', action="store_true")
 
 args = parser.parse_args()
 

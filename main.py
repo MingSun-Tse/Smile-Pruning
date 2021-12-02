@@ -622,6 +622,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
         if args.method and args.wg == 'weight':
             apply_mask_forward(model)
 
+        # @mst: util functionality, check the gradient norm of params
+        if hasattr(args, 'utils') and args.utils.check_grad_norm:
+            from utils import check_grad_norm
+            if i % args.print_interval == 0:
+                print(''); print(f'(** Start check_grad_norm. Epoch {epoch} Step {i} **)')
+                check_grad_norm(model)
+                print(f'(** End check_grad_norm **)'); print('')
+                
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()

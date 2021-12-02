@@ -320,6 +320,7 @@ class Pruner(MetaPruner):
                 if self.total_iter % self.args.print_interval == 0:
                     self.logprint("    reg_status: min = %.5f ave = %.5f max = %.5f" % 
                                 (self.reg[name].min(), self.reg[name].mean(), self.reg[name].max()))
+                    
 
     def _apply_reg(self):
         for name, m in self.model.named_modules():

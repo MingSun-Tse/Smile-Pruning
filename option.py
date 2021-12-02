@@ -137,6 +137,7 @@ parser.add_argument('--reg_upper_limit_pick', type=float, default=1e-2)
 parser.add_argument('--reg_granularity_pick', type=float, default=1e-5)
 parser.add_argument('--reg_granularity_prune', type=float, default=1e-4)
 parser.add_argument('--reg_granularity_recover', type=float, default=-1e-4)
+parser.add_argument('--conv_type', type=str, default='default', choices=['default', 'wn'])
 
 # OPP method related:
 parser.add_argument('--opp_scheme', type=str, default="v1", help='scheme id, used to develop new methods')

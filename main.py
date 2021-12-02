@@ -169,10 +169,11 @@ def main_worker(gpu, ngpus_per_node, args):
             print("=> creating model '{}'".format(args.arch))
             model = models.__dict__[args.arch](num_classes=num_classes)
     else: # @mst: added non-imagenet models
-        model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn)
+        model = model_dict[args.arch](num_classes=num_classes, num_channels=num_channels, use_bn=args.use_bn, conv_type=args.conv_type)
         if args.init in ['orth', 'exact_isometry_from_scratch']:
             model.apply(lambda m: _weights_init_orthogonal(m, act=args.activation))
             print("==> Use weight initialization: 'orthogonal_'. Activation: %s" % args.activation)
+    print(f'==> Use conv_type: {args.conv_type}')
 
     # @mst: save the model after initialization if necessary
     if args.save_init_model:
@@ -217,13 +218,14 @@ def main_worker(gpu, ngpus_per_node, args):
     # This may be useful for the non-imagenet cases where we use our pretrained models
     if args.base_model_path:
         ckpt = torch.load(args.base_model_path)
+        logstr = f'==> Load pretrained ckpt successfully: "{args.base_model_path}".'
         if 'model' in ckpt:
             model = ckpt['model']
+            logstr += ' Use the model stored in ckpt.'
         model.load_state_dict(ckpt['state_dict'])
-        logstr = f"==> Load pretrained model successfully: '{args.base_model_path}'"
         if args.test_pretrained:
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
-            logstr += f". Its accuracy: {acc1:.4f}"
+            logstr += f'Its accuracy: {acc1:.4f}.'
         print(logstr)
         
     # @mst: print base model arch

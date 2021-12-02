@@ -29,6 +29,8 @@ import copy, math
 import numpy as np
 from importlib import import_module
 from data import Data
+
+# import sys; sys.path.insert(0, '../UtilsHub/smilelogging')
 from smilelogging import Logger
 from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
 from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
@@ -46,7 +48,6 @@ original_print = print
 logger = Logger(args)
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
-print = logger.log_printer.logprint
 timer = Timer(args.epochs)
 # ---
 

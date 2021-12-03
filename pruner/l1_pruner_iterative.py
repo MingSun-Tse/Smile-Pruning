@@ -43,7 +43,7 @@ class Pruner(MetaPruner):
         timer = Timer(self.args.epochs_mini)
         for epoch in range(self.args.epochs_mini):
             lr = lr_scheduler(optimizer, epoch)
-            self.logprint(f'[Subprune #{cycle} Finetune] Epoch {epoch} Set LR = {lr}')
+            print(f'[Subprune #{cycle} Finetune] Epoch {epoch} Set LR = {lr}')
             for ix, (inputs, targets) in enumerate(self.train_loader):
                 inputs, targets = inputs.cuda(), targets.cuda()
                 self.model.train()
@@ -57,14 +57,14 @@ class Pruner(MetaPruner):
                     self._apply_mask_forward()
 
                 if ix % self.args.print_interval == 0:
-                    self.logprint(f'[Subprune #{cycle} Finetune] Epoch {epoch} Step {ix} loss {loss:.4f}')
+                    print(f'[Subprune #{cycle} Finetune] Epoch {epoch} Step {ix} loss {loss:.4f}')
             # test
             acc1, *_ = self.test(self.model)
             if acc1 > best_acc1:
                 best_acc1 = acc1
                 best_acc1_epoch = epoch
             self.accprint(f'[Subprune #{cycle} Finetune] Epoch {epoch} Acc1 {acc1:.4f} (Best_Acc1 {best_acc1:.4f} @ Best_Acc1_Epoch {best_acc1_epoch}) LR {lr}')
-            self.logprint(f'predicted finish time: {timer()}')
+            print(f'predicted finish time: {timer()}')
     
     def prune(self):
         # clear existing pr
@@ -72,7 +72,7 @@ class Pruner(MetaPruner):
             self.pr[layer] = 0
 
         for cycle in range(1, self.args.num_cycles + 1):
-            self.logprint(f'==> Start subprune #{cycle}')
+            print(f'==> Start subprune #{cycle}')
             self._update_pr(cycle)
             self._get_kept_wg_L1()
             self._prune_and_build_new_model()

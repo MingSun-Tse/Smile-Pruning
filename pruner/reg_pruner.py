@@ -84,7 +84,7 @@ class Pruner(MetaPruner):
             max_index += n_not_consider
             return sorted_index[:max_index + 1]
         else:
-            self.logprint("Wrong pr. Please check.")
+            print("Wrong pr. Please check.")
             exit(1)
     
     def _update_mag_ratio(self, m, name, w_abs, pruned=None):
@@ -106,8 +106,8 @@ class Pruner(MetaPruner):
         # print
         mag_ratio_now_before = ave_mag_kept / self.original_kept_w_mag[name]
         if self.total_iter % self.args.print_interval == 0:
-            self.logprint("    mag_ratio %.4f mag_ratio_momentum %.4f" % (mag_ratio, self.hist_mag_ratio[name]))
-            self.logprint("    for kept weights, original_kept_w_mag %.6f, now_kept_w_mag %.6f ratio_now_over_original %.4f" % 
+            print("    mag_ratio %.4f mag_ratio_momentum %.4f" % (mag_ratio, self.hist_mag_ratio[name]))
+            print("    for kept weights, original_kept_w_mag %.6f, now_kept_w_mag %.6f ratio_now_over_original %.4f" % 
                 (self.original_kept_w_mag[name], ave_mag_kept, mag_ratio_now_before))
         return mag_ratio_now_before
 
@@ -186,7 +186,7 @@ class Pruner(MetaPruner):
                 self.reg[name][self.kept_wg[name], :] = recover_reg
             '''
             if self.total_iter % self.args.print_interval == 0:
-                self.logprint("    prune stage, push the pruned (reg = %.5f) to zero; for kept weights, reg = %.5f" 
+                print("    prune stage, push the pruned (reg = %.5f) to zero; for kept weights, reg = %.5f" 
                     % (self.reg[name].max().item(), recover_reg))
             
         else:
@@ -237,13 +237,13 @@ class Pruner(MetaPruner):
             picked_wg_in_common = [i for i in pruned_wg if i in self.pruned_wg_L1[name]]
             common_ratio = len(picked_wg_in_common) / len(pruned_wg) if len(pruned_wg) else -1
             n_finish_pick = len(self.iter_finish_pick)
-            self.logprint("    [%d] just finished pick (n_finish_pick = %d). %.2f in common chosen by L1 & GReg-2. Iter = %d" % 
+            print("    [%d] just finished pick (n_finish_pick = %d). %.2f in common chosen by L1 & GReg-2. Iter = %d" % 
                 (layer_index, n_finish_pick, common_ratio, self.total_iter))
             
             # re-scale the weights to recover the response magnitude
             # factor = self.original_w_mag[name] / m.weight.abs().mean()
             # m.weight.data.mul_(factor)
-            # self.logprint('    rescale weight by %.4f' % factor.item())
+            # print('    rescale weight by %.4f' % factor.item())
 
             # check if all layers finish picking
             self.all_layer_finish_pick = True
@@ -282,7 +282,7 @@ class Pruner(MetaPruner):
                     continue
 
                 if self.total_iter % self.args.print_interval == 0:
-                    self.logprint("[%d] Update reg for layer '%s'. Pr = %s. Iter = %d" 
+                    print("[%d] Update reg for layer '%s'. Pr = %s. Iter = %d" 
                         % (cnt_m, name, pr, self.total_iter))
                 
                 # get the importance score (L1-norm in this case)
@@ -295,14 +295,14 @@ class Pruner(MetaPruner):
                 elif self.args.method == "GReg-2":
                     finish_update_reg = self._greg_2(m, name)
                 else:
-                    self.logprint("Wrong '--method' argument, please check.")
+                    print("Wrong '--method' argument, please check.")
                     exit(1)
 
                 # check prune state
                 if finish_update_reg:
                     # after 'update_reg' stage, keep the reg to stabilize weight magnitude
                     self.iter_update_reg_finished[name] = self.total_iter
-                    self.logprint("==> [%d] Just finished 'update_reg'. Iter = %d" % (cnt_m, self.total_iter))
+                    print("==> [%d] Just finished 'update_reg'. Iter = %d" % (cnt_m, self.total_iter))
 
                     # check if all layers finish 'update_reg'
                     self.prune_state = "stabilize_reg"
@@ -313,12 +313,12 @@ class Pruner(MetaPruner):
                                 break
                     if self.prune_state == "stabilize_reg":
                         self.iter_stabilize_reg = self.total_iter
-                        self.logprint("==> All layers just finished 'update_reg', go to 'stabilize_reg'. Iter = %d" % self.total_iter)
+                        print("==> All layers just finished 'update_reg', go to 'stabilize_reg'. Iter = %d" % self.total_iter)
                         self._save_model(mark='just_finished_update_reg')
                     
                 # after reg is updated, print to check
                 if self.total_iter % self.args.print_interval == 0:
-                    self.logprint("    reg_status: min = %.5f ave = %.5f max = %.5f" % 
+                    print("    reg_status: min = %.5f ave = %.5f max = %.5f" % 
                                 (self.reg[name].min(), self.reg[name].mean(), self.reg[name].max()))
                     
 
@@ -332,10 +332,11 @@ class Pruner(MetaPruner):
                 elif self.args.wg == 'weight':
                     reg = reg.view_as(m.weight.data) # [N, C, H, W]
                 l2_grad = reg * m.weight
+                l1_grad = reg * torch.sign(m.weight)
                 if self.args.block_loss_grad:
-                    m.weight.grad = l2_grad
+                    m.weight.grad = self.args.lw_l2 * l2_grad + self.args.lw_l1 * l1_grad
                 else:
-                    m.weight.grad += l2_grad
+                    m.weight.grad += self.args.lw_l2 * l2_grad + self.args.lw_l1 * l1_grad
     
     def _resume_prune_status(self, ckpt_path):
         state = torch.load(ckpt_path)
@@ -381,7 +382,7 @@ class Pruner(MetaPruner):
             self._resume_prune_status(self.args.resume_path)
             self._get_kept_wg_L1() # get pruned and kept wg from the resumed model
             self.model = self.model.train()
-            self.logprint("Resume model successfully: '{}'. Iter = {}. prune_state = {}".format(
+            print("Resume model successfully: '{}'. Iter = {}. prune_state = {}".format(
                         self.args.resume_path, self.total_iter, self.prune_state))
 
         acc1 = acc5 = 0
@@ -402,11 +403,11 @@ class Pruner(MetaPruner):
                 # save model (save model before a batch starts)
                 if total_iter % self.args.save_interval == 0:
                     self._save_model(acc1, acc5)
-                    self.logprint('Periodically save model done. Iter = {}'.format(total_iter))
+                    print('Periodically save model done. Iter = {}'.format(total_iter))
                     
                 if total_iter % self.args.print_interval == 0:
-                    self.logprint("")
-                    self.logprint("Iter = %d [prune_state = %s, method = %s] " 
+                    print("")
+                    print("Iter = %d [prune_state = %s, method = %s] " 
                         % (total_iter, self.prune_state, self.args.method) + "-"*40)
                     
                 # forward
@@ -443,16 +444,16 @@ class Pruner(MetaPruner):
                                 wstr = ' '.join(['%.3f (%s)' % (x, y) for x, y in zip(m.weight.data, mask_)])
                                 bstr = ' '.join(['%.3f (%s)' % (x, y) for x, y in zip(m.bias.data, mask_)])
                                 logstr = f'{last_conv} BN weight: {wstr}\nBN bias: {bstr}'
-                                self.logprint(logstr)
+                                print(logstr)
 
                     # check train acc
                     _, predicted = y_.max(1)
                     correct = predicted.eq(targets).sum().item()
                     train_acc = correct / targets.size(0)
-                    self.logprint("After optim update current_train_loss: %.4f current_train_acc: %.4f" % (loss.item(), train_acc))
+                    print("After optim update current_train_loss: %.4f current_train_acc: %.4f" % (loss.item(), train_acc))
                             
                 if self.args.__dict__.get('AdaReg_only_picking') and self.all_layer_finish_pick:
-                    self.logprint("GReg-2 just finished picking for all layers. Resume original model and switch to GReg-1. Iter = %d" % total_iter)
+                    print("GReg-2 just finished picking for all layers. Resume original model and switch to GReg-1. Iter = %d" % total_iter)
                     
                     # save picked wg
                     pkl_path = os.path.join(self.logger.log_path, 'picked_wg.pkl')
@@ -475,7 +476,7 @@ class Pruner(MetaPruner):
                 
                 if self.args.__dict__.get('AdaReg_revive_kept') and self.all_layer_finish_pick:
                     self._prune_and_build_new_model()
-                    self.logprint("GReg-2 just finished picking for all layers. Pruned and go to 'finetune'. Iter = %d" % total_iter)
+                    print("GReg-2 just finished picking for all layers. Pruned and go to 'finetune'. Iter = %d" % total_iter)
                     return copy.deepcopy(self.model)
                 
                 # change prune state
@@ -499,11 +500,11 @@ class Pruner(MetaPruner):
                     # # ---
                     model_before_removing_weights = copy.deepcopy(self.model)
                     self._prune_and_build_new_model()
-                    self.logprint("'stabilize_reg' is done. Pruned, go to 'finetune'. Iter = %d" % total_iter)
+                    print("'stabilize_reg' is done. Pruned, go to 'finetune'. Iter = %d" % total_iter)
                     return model_before_removing_weights, copy.deepcopy(self.model)
 
                 if total_iter % self.args.print_interval == 0:
-                    self.logprint(f"predicted_finish_time of reg: {timer()}")
+                    print(f"predicted_finish_time of reg: {timer()}")
 
     def _plot_mag_ratio(self, w_abs, name):
         fig, ax = plt.subplots()

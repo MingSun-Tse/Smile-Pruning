@@ -40,8 +40,8 @@ class Pruner(MetaPruner):
                 total_iter = self.total_iter
                     
                 if total_iter % self.args.print_interval == 0:
-                    self.logprint("")
-                    self.logprint("Iter = %d [prune_state = %s, method = %s] " 
+                    print("")
+                    print("Iter = %d [prune_state = %s, method = %s] " 
                         % (total_iter, self.prune_state, self.args.method) + "-"*40)
                     
                 # forward
@@ -72,8 +72,8 @@ class Pruner(MetaPruner):
                 # print loss
                 if self.total_iter % self.args.print_interval == 0:
                     logtmp += f' loss_orth_reg (*{self.args.lw_orth_reg}) {loss_orth_reg:.10f} Iter {self.total_iter}'
-                    self.logprint(logtmp)
-                    self.logprint(f"predicted_finish_time of orth_reg: {timer()}")
+                    print(logtmp)
+                    print(f"predicted_finish_time of orth_reg: {timer()}")
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -88,7 +88,7 @@ class Pruner(MetaPruner):
                 # save model (save model before a batch starts)
                 if total_iter % self.args.save_interval == 0:
                     self._save_model(model, optimizer, acc1, acc5)
-                    self.logprint('Periodically save model done. Iter = {}'.format(total_iter))
+                    print('Periodically save model done. Iter = {}'.format(total_iter))
 
                 # return
                 if total_iter > self.args.orth_reg_iter:

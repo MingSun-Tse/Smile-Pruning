@@ -51,7 +51,6 @@ class MetaPruner:
         self.model = model
         self.args = args
         self.logger = logger
-        self.logprint = logger.log_printer.logprint
         self.accprint = logger.log_printer.accprint
         self.netprint = logger.log_printer.netprint
         self.test = lambda net: passer.test(passer.test_loader, net, passer.criterion, passer.args)
@@ -279,7 +278,7 @@ class MetaPruner:
                 n_pruned = len(self.pruned_wg_pr_model[k])
                 n_kept = len(self.kept_wg_pr_model[k])
                 self.pr[k] = float(n_pruned) / (n_pruned + n_kept)
-            self.logprint("==> Load base_pr_model successfully and inherit its pruning ratio: '{}'".format(self.args.base_pr_model))
+            print("==> Load base_pr_model successfully and inherit its pruning ratio: '{}'".format(self.args.base_pr_model))
 
     def _get_kept_wg_L1(self):
         '''Decide kept (or pruned) weight group by L1-norm sorting.
@@ -287,7 +286,7 @@ class MetaPruner:
         if self.args.base_pr_model and self.args.inherit_pruned == 'index':
             self.pruned_wg = self.pruned_wg_pr_model
             self.kept_wg = self.kept_wg_pr_model
-            self.logprint("==> Inherit the pruned index from base_pr_model: '{}'".format(self.args.base_pr_model))
+            print("==> Inherit the pruned index from base_pr_model: '{}'".format(self.args.base_pr_model))
         else:    
             wg = self.args.wg
             for name, m in self.model.named_modules():
@@ -344,7 +343,7 @@ class MetaPruner:
                     else: # current layer is the 1st fc, the previous layer is the last conv
                         last_conv_n_filter = self.layers[prev_learnable_layer].size[0]
                         last_conv_fm_size = int(m.weight.size(1) / last_conv_n_filter) # feature map spatial size. 36 for alexnet
-                        self.logprint('last_conv_feature_map_size: %dx%d (before fed into the first fc)' % (sqrt(last_conv_fm_size), sqrt(last_conv_fm_size)))
+                        print('last_conv_feature_map_size: %dx%d (before fed into the first fc)' % (sqrt(last_conv_fm_size), sqrt(last_conv_fm_size)))
                         last_conv_kept_filter = self.kept_wg[prev_learnable_layer]
                         kept_chl = []
                         for i in last_conv_kept_filter:
@@ -414,7 +413,7 @@ class MetaPruner:
         for ix, num in n_filter.items():
             logtmp += '%s:%d, ' % (ix, num)
         logtmp = logtmp[:-2] + '}'
-        self.logprint('n_filter of pruned model: %s' % logtmp)
+        print('n_filter of pruned model: %s' % logtmp)
 
     def _get_masks(self):
         '''Get masks for unstructured pruning
@@ -426,4 +425,4 @@ class MetaPruner:
                 pruned = self.pruned_wg[name]
                 mask[pruned] = 0
                 self.mask[name] = mask.view_as(m.weight.data)
-        self.logprint('Get masks done for weight pruning')
+        print('Get masks done for weight pruning')

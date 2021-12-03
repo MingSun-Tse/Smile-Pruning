@@ -138,6 +138,8 @@ parser.add_argument('--reg_granularity_pick', type=float, default=1e-5)
 parser.add_argument('--reg_granularity_prune', type=float, default=1e-4)
 parser.add_argument('--reg_granularity_recover', type=float, default=-1e-4)
 parser.add_argument('--conv_type', type=str, default='default', choices=['default', 'wn'])
+parser.add_argument('--lw_l1', type=float, default=0, help='loss weight for l1 regularization when using both l1 and l2')
+parser.add_argument('--lw_l2', type=float, default=1, help='loss weight for l2 regularization when using both l1 and l2')
 
 # OPP method related:
 parser.add_argument('--opp_scheme', type=str, default="v1", help='scheme id, used to develop new methods')

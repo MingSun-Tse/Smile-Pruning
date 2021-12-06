@@ -190,6 +190,7 @@ if args.stage_pr:
         if is_single_branch(args.arch): # e.g., alexnet, vgg
             args.stage_pr = parse_prune_ratio_vgg(args.stage_pr, num_layers=num_layers[args.arch]) # example: [0-4:0.5, 5:0.6, 8-10:0.2]
             args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [0, 2, 6]
+            assert args.stage_pr[num_layers[args.arch] - 1] == 0, 'The output layer should NOT be pruned. Please check your "--stage_pr" setting.'
         else: # e.g., resnet
             args.stage_pr = strlist_to_list(args.stage_pr, float) # example: [0, 0.4, 0.5, 0]
             args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [2.3.1, 3.1]

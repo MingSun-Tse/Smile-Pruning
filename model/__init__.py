@@ -41,10 +41,14 @@ num_layers = {
     'lenet5_wider_linear': 5,
     'lenet5_wider_linear_nomaxpool': 5,
     'alexnet': 8,
-    'vgg11': 11,
-    'vgg13': 13,
-    'vgg16': 16,
-    'vgg19': 19,
+    # -------------------
+    # These VGG nets are from [EigenDamage, ICML, 2019], where the two FC layers are replaced with a global average pooling,
+    # thus they have two fewer layers than the original VGG nets.
+    'vgg11': 9,
+    'vgg13': 11,
+    'vgg16': 14,
+    'vgg19': 17,
+    # -------------------
     'vgg11_bn': 11,
     'vgg13_bn': 13,
     'vgg16_bn': 16,

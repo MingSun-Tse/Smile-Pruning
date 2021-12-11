@@ -6,45 +6,9 @@ import numpy as np
 from math import ceil, sqrt
 from collections import OrderedDict
 from utils import strdict_to_dict
+from .layer import register_modulename, register_hook, rm_hook, Layer
 from fnmatch import fnmatch, fnmatchcase
-
-class Layer:
-    def __init__(self, name, size, layer_index, res=False, layer_type=None):
-        self.name = name
-        self.size = []
-        for x in size:
-            self.size.append(x)
-        self.layer_index = layer_index
-        self.layer_type = layer_type
-        self.is_shortcut = True if "downsample" in name else False
-        if res:
-            self.stage, self.seq_index, self.block_index = self._get_various_index_by_name(name)
-    
-    def _get_various_index_by_name(self, name):
-        '''Get the indeces including stage, seq_ix, blk_ix.
-            Same stage means the same feature map size.
-        '''
-        global lastest_stage # an awkward impel, just for now
-        if name.startswith('module.'):
-            name = name[7:] # remove the prefix caused by pytorch data parallel
-
-        if "conv1" == name: # TODO: this might not be so safe
-            lastest_stage = 0
-            return 0, None, None
-        if "linear" in name or 'fc' in name: # Note: this can be risky. Check it fully. TODO: @mingsun-tse
-            return lastest_stage + 1, None, None # fc layer should always be the last layer
-        else:
-            try:
-                stage  = int(name.split(".")[0][-1]) # ONLY work for standard resnets. name example: layer2.2.conv1, layer4.0.downsample.0
-                seq_ix = int(name.split(".")[1])
-                if 'conv' in name.split(".")[-1]:
-                    blk_ix = int(name[-1]) - 1
-                else:
-                    blk_ix = -1 # shortcut layer  
-                lastest_stage = stage
-                return stage, seq_ix, blk_ix
-            except:
-                print('!Parsing the layer name failed: %s. Please check.' % name)
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
 class MetaPruner:
     def __init__(self, model, args, logger, passer):
@@ -57,12 +21,14 @@ class MetaPruner:
         self.train_loader = passer.train_loader
         self.criterion = passer.criterion
         self.save = passer.save
+        self.input_size = passer.input_size
         self.is_single_branch = passer.is_single_branch
 
-        self.learnable_layers = (nn.Conv2d, nn.Linear) # Note: for now, we only focus on weights in Conv and FC modules, no BN.
+        # register learnable layers
+        self.learnable_layers = (nn.Conv2d, nn.Conv1d, nn.Linear) # Note: for now, we only focus on weights in Conv and FC modules, no BN.
         self.layers = OrderedDict() # learnable layers
         self.all_layers = [] # all layers
-        self._register_layers() # register learnable layers
+        self._register_layers()
 
         arch = self.args.arch
         if arch.startswith('resnet'):
@@ -97,30 +63,29 @@ class MetaPruner:
         return out
 
     def _register_layers(self):
-        '''
-            This will maintain a data structure that can return some useful 
+        ''' This will maintain a data structure that can return some useful 
             information by the name of a layer.
         '''
-        ix = -1 # layer index, starts from 0
+        # register module name
+        register_modulename(self.model)
+
+        # register layers
         self._max_len_name = 0
-        layer_shape = {}
-        for name, m in self.model.named_modules():
-            self.all_layers += [name]
-            if isinstance(m, self.learnable_layers):
-                if "downsample" not in name: # hardcoding, an ugly design, will be improved
-                    ix += 1
-                layer_shape[name] = [ix, m.weight.size()]
-                self._max_len_name = max(self._max_len_name, len(name))
-                
-                size = m.weight.size()
-                res = True if self.args.arch.startswith('resnet') else False
-                self.layers[name] = Layer(name, size, ix, res, layer_type=m.__class__.__name__)
-        
-        self._max_len_ix = len("%s" % ix)
+        kwargs = {
+            'layers': self.layers,
+            'max_len_name': self._max_len_name,
+            'learnable_layers': self.learnable_layers,
+            'res': True if 'resnet' in self.args.arch else False,
+        }
+        handles = register_hook(self.model, **kwargs) # this will update 'self.layers'
+        dummy_input = torch.randn(self.input_size).to(DEVICE)
+        self.model(dummy_input) # make hooks physically work
+        rm_hook(handles)
         print("Register layer index and kernel shape:")
+        self._max_len_ix = len(f'{len(self.layers)}')
         format_str = "[%{}d] %{}s -- kernel_shape: %s".format(self._max_len_ix, self._max_len_name)
-        for name, (ix, ks) in layer_shape.items():
-            print(format_str % (ix, name, ks))
+        for k, v in self.layers.items():
+            print(format_str % (v.layer_index, v.name, v.size) + f' <== {v.last}')
 
     def _next_learnable_layer(self, model, name, mm):
         '''get the next conv or fc layer name
@@ -164,6 +129,7 @@ class MetaPruner:
         return None
 
     def _next_bn(self, model, mm):
+        ''' TODO: replace with layers impl. instead of using "model.modules()" '''
         just_passed_mm = False
         for m in model.modules():
             if m == mm:

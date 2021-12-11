@@ -41,11 +41,12 @@ num_classes_dict = {
     'tiny_imagenet': 200,
 }
 
-img_size_dict = {
-    'mnist': 32,
-    'fmnist': 32,
-    'cifar10': 32,
-    'cifar100': 32,
-    'imagenet': 224,
-    'tiny_imagenet': 64,
+# shape [N, C, H, W]
+input_size_dict = {
+    'mnist': (1, 1, 32, 32),
+    'fmnist': (1, 1, 32, 32), 
+    'cifar10': (1, 3, 32, 32),
+    'cifar100': (1, 3, 32, 32),
+    'imagenet': (1, 3, 224, 224),
+    'tiny_imagenet': (1, 3, 64, 64),
 }

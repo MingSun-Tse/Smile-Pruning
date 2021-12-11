@@ -37,7 +37,7 @@ from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal
 from utils import Dataset_lmdb_batch
 from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
 from model import model_dict, is_single_branch
-from data import num_classes_dict, img_size_dict
+from data import num_classes_dict, input_size_dict
 from pruner import pruner_dict
 from pruner.reinit_model import reinit_model, orth_dist, deconv_orth_dist
 from pruner.feat_analyze import FeatureAnalyzer
@@ -160,8 +160,7 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     num_classes = num_classes_dict[args.dataset]
-    img_size = img_size_dict[args.dataset]
-    num_channels = 1 if args.dataset == 'mnist' else 3
+    *_, num_channels, input_height, input_width = input_size_dict[args.dataset]
     if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
         if args.pretrained:
             print("=> using pre-trained model '{}'".format(args.arch))
@@ -287,7 +286,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
         # get the original unpruned model statistics
         n_params_original_v2 = get_n_params_(model)
-        n_flops_original_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
+        n_flops_original_v2 = get_n_flops_(model, img_size=input_height, n_channel=num_channels)
 
         # init some variables for pruning
         prune_state = 'prune'
@@ -347,6 +346,7 @@ def main_worker(gpu, ngpus_per_node, args):
             passer.pruner = pruner
             passer.args = args
             passer.is_single_branch = is_single_branch
+            passer.input_size = input_size_dict[args.dataset]
             # ***********************************************************
             # key pruning function
             pruner = pruner_dict[args.method].Pruner(model, args, logger, passer)
@@ -362,7 +362,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
             # get model statistics of the pruned model
             n_params_now_v2 = get_n_params_(model)
-            n_flops_now_v2 = get_n_flops_(model, img_size=img_size, n_channel=num_channels)
+            n_flops_now_v2 = get_n_flops_(model, img_size=input_height, n_channel=num_channels) # TODO-@mst: Use torchsummaryX
             print("==> n_params_original_v2: {:>9.6f}M, n_flops_original_v2: {:>9.6f}G".format(n_params_original_v2/1e6, n_flops_original_v2/1e9))
             print("==> n_params_now_v2:      {:>9.6f}M, n_flops_now_v2:      {:>9.6f}G".format(n_params_now_v2/1e6, n_flops_now_v2/1e9))
             ratio_param = (n_params_original_v2 - n_params_now_v2) / n_params_original_v2

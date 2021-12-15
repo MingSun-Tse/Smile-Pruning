@@ -6,6 +6,8 @@ from .meta_pruner import MetaPruner
 from utils import plot_weights_heatmap, Timer
 import matplotlib.pyplot as plt
 pjoin = os.path.join
+tensor2list = lambda x: x.cpu().data.numpy().tolist()
+tensor2array = lambda x: x.cpu().data.numpy()
 
 class Pruner(MetaPruner):
     def __init__(self, model, args, logger, passer):
@@ -61,12 +63,15 @@ class Pruner(MetaPruner):
                 self.original_kept_w_mag[name] = w_abs[kept_wg_L1].mean().item()
 
     def _pick_pruned_wg(self, w, pr):
+        '''return a list of indices of pruned weight groups'''
         if pr == 0:
             return []
+        
         elif pr > 0:
             w = w.flatten()
             n_pruned = min(math.ceil(pr * w.size(0)), w.size(0) - 1) # do not prune all
-            return w.sort()[1][:n_pruned]
+            return tensor2list(w.sort()[1][:n_pruned])
+        
         elif pr == -1: # automatically decide lr by each layer itself
             tmp = w.flatten().sort()[0]
             n_not_consider = int(len(tmp) * 0.02)
@@ -82,9 +87,10 @@ class Pruner(MetaPruner):
                     max_gap = gap
                     max_index = i
             max_index += n_not_consider
-            return sorted_index[:max_index + 1]
+            return tensor2list(sorted_index[:max_index + 1])
+        
         else:
-            print("Wrong pr. Please check.")
+            print('Wrong pruning ratio. Please check.')
             exit(1)
     
     def _update_mag_ratio(self, m, name, w_abs, pruned=None):
@@ -150,7 +156,7 @@ class Pruner(MetaPruner):
         
     def _greg_2(self, m, name):
         layer_index = self.layers[name].layer_index
-        w_abs = self.w_abs[name]
+        w_abs = self._get_score(m)
         n_wg = len(w_abs)
         pr = self.pr[name]
         if pr == 0:
@@ -171,7 +177,7 @@ class Pruner(MetaPruner):
             elif self.args.wg == 'weight':
                 self.reg[name][self.pruned_wg[name]] += self.args.reg_granularity_prune
                 self.reg[name][self.kept_wg[name]] = recover_reg
-
+            
             # for kept weights, bring them back
             # 09/22 update: It seems negative reg is a bad idea to bring back magnitude.
             '''

@@ -94,17 +94,14 @@ class Pruner(MetaPruner):
             exit(1)
     
     def _update_mag_ratio(self, m, name, w_abs, pruned=None):
-        if type(pruned) == type(None):
+        if pruned is None:
             pruned = self.pruned_wg[name]
-        kept = [i for i in range(len(w_abs)) if i not in pruned]
+        kept = list(set(range(len(w_abs))) - set(pruned))
         ave_mag_pruned = w_abs[pruned].mean()
         ave_mag_kept = w_abs[kept].mean()
         if len(pruned):
             mag_ratio = ave_mag_kept / ave_mag_pruned 
-            if name in self.hist_mag_ratio:
-                self.hist_mag_ratio[name] = self.hist_mag_ratio[name]* 0.9 + mag_ratio * 0.1
-            else:
-                self.hist_mag_ratio[name] = mag_ratio
+            self.hist_mag_ratio[name] = self.hist_mag_ratio[name] * 0.9 + mag_ratio * 0.1 if name in self.hist_mag_ratio else mag_ratio
         else:
             mag_ratio = math.inf
             self.hist_mag_ratio[name] = math.inf
@@ -115,6 +112,7 @@ class Pruner(MetaPruner):
             print("    mag_ratio %.4f mag_ratio_momentum %.4f" % (mag_ratio, self.hist_mag_ratio[name]))
             print("    for kept weights, original_kept_w_mag %.6f, now_kept_w_mag %.6f ratio_now_over_original %.4f" % 
                 (self.original_kept_w_mag[name], ave_mag_kept, mag_ratio_now_before))
+        
         return mag_ratio_now_before
 
     def _get_score(self, m):
@@ -148,11 +146,8 @@ class Pruner(MetaPruner):
         if self.args.wg == 'weight': # for weight, do not use the magnitude ratio condition, because 'hist_mag_ratio' is not updated, too costly
             finish_update_reg = False
         else:
-            finish_update_reg = True
-            for k in self.hist_mag_ratio:
-                if self.hist_mag_ratio[k] < self.args.mag_ratio_limit:
-                    finish_update_reg = False
-        return finish_update_reg or self.reg[name].max() > self.args.reg_upper_limit
+            finish_update_reg = self.reg[name].max() > self.args.reg_upper_limit
+        return finish_update_reg
         
     def _greg_2(self, m, name):
         layer_index = self.layers[name].layer_index
@@ -267,15 +262,9 @@ class Pruner(MetaPruner):
                 exit(0)
         
         if self.args.__dict__.get('AdaReg_only_picking') or self.args.__dict__.get('AdaReg_revive_kept'):
-            finish_update_reg = False
+            finish_update_reg = False # deprecated, will be removed
         else:
-            cond0 = name in self.iter_finish_pick # finsihed picking
-            if self.args.wg == 'weight':
-                cond1 = self.reg[name].max() > self.args.reg_upper_limit
-            else:
-                cond1 = self.hist_mag_ratio[name] >= self.args.mag_ratio_limit \
-                    or self.reg[name].max() > self.args.reg_upper_limit
-            finish_update_reg = cond0 and cond1
+            finish_update_reg = name in self.iter_finish_pick and self.reg[name].max() > self.args.reg_upper_limit
         return finish_update_reg
 
     def _update_reg(self):

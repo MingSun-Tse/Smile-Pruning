@@ -4,8 +4,13 @@ import sys
 pjoin = os.path.join
 import matplotlib.pyplot as plt
 
-'''Example:
+'''
+Usage:
     python  this_file.py   <mag_reg_log_dir>  <net>
+
+Example:
+    on SERVER138, run
+    python tools/iclr21_latex_plots/latex__plot_mag_vs_reg.py Experiments/SaveMagRegLog-AdaReg-vgg19-cifar100_SERVER138-20200604-191618_Backup/log vgg19
 '''
 
 
@@ -38,7 +43,7 @@ for i in range(60): # plot in the order of layer index
             break
     if got_it == False: continue
     npy = pjoin(mag_reg_log_dir, npy)
-    log = np.load(npy).item() # MUST use item, because the loaded npy is actually a dict!
+    log = np.load(npy, allow_pickle=True).item() # MUST use item, because the loaded npy is actually a dict!
     
     name = log['name']
     name = name.split('module.')[1]

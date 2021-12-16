@@ -9,7 +9,7 @@ net = sys.argv[2]
 npys = [x for x in os.listdir(mag_reg_log_dir) if x.endswith('.npy')]
 for npy in npys:
     npy = pjoin(mag_reg_log_dir, npy)
-    log = np.load(npy).item() # MUST use item, because the loaded npy is actually a dict!
+    log = np.load(npy, allow_pickle=True).item() # MUST use item, because the loaded npy is actually a dict!
     
     name = log['name']
     name = name.split('module.')[1]

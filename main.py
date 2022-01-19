@@ -160,6 +160,8 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     num_classes = num_classes_dict[args.dataset]
+    args.passer = {}
+    args.passer['num_classes'] = num_classes
     *_, num_channels, input_height, input_width = input_size_dict[args.dataset]
     if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
         if args.pretrained:
@@ -426,10 +428,10 @@ def main_worker(gpu, ngpus_per_node, args):
             (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff)))
 
     # finetune
-    finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=num_classes)
+    finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args)
 
 # @mst
-def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, num_classes=10, print_log=True):
+def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, best_acc1, best_acc1_epoch, args, print_log=True):
     # since model is new, we need a new optimizer
     if args.solver == 'Adam':
         print('==> Start to finetune: using Adam optimizer')
@@ -477,12 +479,6 @@ def finetune(model, train_loader, val_loader, train_sampler, criterion, pruner, 
         if hasattr(args, 'advanced_lr'): # advanced_lr will adjust lr inside the train fn
             lr = args.advanced_lr.lr
         last_lr = lr
-
-        # @mst: check Jacobian singular value (JSV)
-        if args.jsv_loop:
-            jsv, jsv_diff, cn = get_jacobian_singular_values(model, train_loader, num_classes=num_classes, n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
-            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f -- Epoch %d' % 
-                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff), epoch))
 
         # @mst: check weights magnitude during finetune
         if args.method in ['GReg-1', 'GReg-2'] and not isinstance(pruner, type(None)):
@@ -629,7 +625,15 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
                 print(''); print(f'(** Start check_grad_norm. Epoch {epoch} Step {i} **)')
                 check_grad_norm(model)
                 print(f'(** End check_grad_norm **)'); print('')
-                
+
+        # @mst: check Jacobian singular value (JSV)
+        if args.jsv_interval == -1:
+            args.jsv_interval = len(train_loader) # default: check jsv at the last iteration
+        if args.jsv_loop and (i + 1) % args.jsv_interval == 0:
+            jsv, jsv_diff, cn = get_jacobian_singular_values(model, train_loader, num_classes=args.passer['num_classes'], n_loop=args.jsv_loop, print_func=print, rand_data=args.jsv_rand_data)
+            print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f -- Epoch %d Iter %d' % 
+                (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff), epoch, i))
+
         # measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()

@@ -626,6 +626,14 @@ def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True
                 check_grad_norm(model)
                 print(f'(** End check_grad_norm **)'); print('')
 
+        # @mst: util functionality, check the gradient norm of params
+        if hasattr(args, 'utils') and args.utils.check_weight_stats:
+            from utils import check_weight_stats
+            if i % args.print_interval == 0:
+                print(''); print(f'(** Start check_weight_stats. Epoch {epoch} Step {i} **)')
+                check_weight_stats(model)
+                print(f'(** End check_weight_stats **)'); print('')
+
         # @mst: check Jacobian singular value (JSV)
         if args.jsv_interval == -1:
             args.jsv_interval = len(train_loader) # default: check jsv at the last iteration

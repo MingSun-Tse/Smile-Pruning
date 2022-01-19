@@ -181,6 +181,7 @@ parser.add_argument('--advanced_lr.lr_decay', type=str, choices=['step', 'cos', 
 parser.add_argument('--utils.ON', action="store_true")
 parser.add_argument('--utils.check_kernel_spatial_dist', action="store_true")
 parser.add_argument('--utils.check_grad_norm', action="store_true")
+parser.add_argument('--utils.check_weight_stats', action="store_true")
 
 args = parser.parse_args()
 

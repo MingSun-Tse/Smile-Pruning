@@ -1,8 +1,38 @@
 from utils import _weights_init, _weights_init_orthogonal, orthogonalize_weights, delta_orthogonalize_weights
 import torch
 import torch.nn as nn
+from torch.nn.init import _calculate_correct_fan, calculate_gain
 import torch.nn.functional as F
-import numpy as np
+import numpy as np, math
+
+def isfloat(num):
+    try:
+        float(num)
+        return True
+    except ValueError:
+        return False
+
+def rescale_model(model, rescale='std', a=0, mode='fan_in', nonlinearity='leaky_relu'):
+    r"""Refer to: https://pytorch.org/docs/stable/_modules/torch/nn/init.html#kaiming_uniform_
+    """
+    for name, module in model.named_modules():
+        if isinstance(module, (nn.Conv2d, nn.Linear)):
+            if rescale.startswith('std'):
+                tensor = module.weight.data
+                fan = _calculate_correct_fan(tensor, mode)
+                gain = calculate_gain(nonlinearity, a)
+                std = gain / math.sqrt(fan)
+                current_std = torch.std(module.weight.data)
+                factor = std / current_std
+                if rescale != 'std':
+                    factor *= float(rescale[3:])
+            elif isfloat(rescale):
+                factor = float(rescale)
+            else:
+                raise NotImplementedError
+            module.weight.data.copy_(module.weight.data * factor)
+            print(f'Rescale layer "{name}", factor: {factor:.4f}')
+    return model
 
 def approximate_isometry_optimize(model, mask, lr, n_iter, wg='weight', print=print):
     '''Refer to: 2020-ICLR-A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).

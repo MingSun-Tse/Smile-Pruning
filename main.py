@@ -39,7 +39,7 @@ from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
 from model import model_dict, is_single_branch
 from data import num_classes_dict, input_size_dict
 from pruner import pruner_dict
-from pruner.reinit_model import reinit_model, orth_dist, deconv_orth_dist
+from pruner.reinit_model import reinit_model, rescale_model, orth_dist, deconv_orth_dist
 from pruner.feat_analyze import FeatureAnalyzer
 from option import args
 pjoin = os.path.join
@@ -416,6 +416,11 @@ def main_worker(gpu, ngpus_per_node, args):
         if args.feat_analyze:
             print('analyzing feature of conv/fc layers (after reinit):')
             FeatureAnalyzer(model, val_loader, criterion=criterion, print=print)
+    
+    if args.rescale:
+        print(f'==> Rescale model weights, begin:')
+        model = rescale_model(model, args.rescale)
+        print(f'==> Rescale model weights, done!')
 
     # check Jacobian singular value (JSV) after pruning
     if args.jsv_loop:

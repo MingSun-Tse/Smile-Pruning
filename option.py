@@ -105,6 +105,7 @@ parser.add_argument('--reinit', type=str, default='', choices=['', 'default', 'p
         'exact_isometry_from_scratch', 'exact_isometry_based_on_existing', 'exact_isometry_based_on_existing_delta', 'approximate_isometry'],
         help='before finetuning, the pruned model will be reinited')
 parser.add_argument('--reinit_scale', type=float, default=1.)
+parser.add_argument('--rescale', type=str, default='')
 parser.add_argument('--not_use_bn', dest='use_bn', default=True, action="store_false", help='if use BN in the network')
 parser.add_argument('--block_loss_grad', action="store_true", help="block the grad from loss, only apply weight decay")
 parser.add_argument('--save_mag_reg_log', action="store_true", help="save log of L1-norm of filters wrt reg")

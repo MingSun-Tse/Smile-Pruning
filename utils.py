@@ -131,16 +131,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
     end = time.time()
     train_epoch_index = []
-
-    # initialize the stats
-    epoch_grad_mean = {}
-    epoch_grad_std = {}
-    for name, module in model.named_modules():
-        if isinstance(module, (nn.Conv2d, nn.Linear)):
-            epoch_grad_mean[name] = torch.zeros(module.weight.size())
-            epoch_grad_std[name] = torch.zeros(module.weight.size())
-    # st()
-
     for i, (x, y, index) in enumerate(train_loader):
         data_time.update(time.time() - end)
         train_epoch_index = train_epoch_index + index.tolist()
@@ -162,9 +152,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         optimizer.zero_grad()
         loss.backward()
-        for name, module in model.named_modules():
-            if isinstance(module, (nn.Conv2d, nn.Linear)):
-
         optimizer.step()
 
         batch_time.update(time.time() - end)
@@ -172,14 +159,6 @@ def train(train_loader, model, criterion, optimizer, epoch, args):
 
         if i % args.ft_print_interval == 0:
             progress.display(i)
-
-        for name, module in model.named_modules():
-            if isinstance(module, (nn.Conv2d, nn.Linear)):
-                module.weight.grad.mean()
-                module.weight.grad.std()
-
-
-    st()
 
     return np.array(train_epoch_index)
     # TODO: train no more need to return index

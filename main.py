@@ -42,6 +42,7 @@ def main_worker(args):
 	for each_module_str in pipeline:
 		each_module = module_dict[each_module_str]
 		input_bunch = each_module(*input_bunch)
+		# update config for each module
 
 	# pipeline level analysis
 	if args.ipPlot == 1:

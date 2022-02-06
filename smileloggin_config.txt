@@ -1,0 +1,5 @@
+_experiments_dir: myexps
+_weights_dir: myweights
+_gen_img_dir: myimgs
+_log_dir: mylogs
+!reserve_dir: test/misc_results

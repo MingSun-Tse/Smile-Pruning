@@ -29,3 +29,5 @@ parser.add_argument('--ipPlot_est', type=str, default='bin')
 parser.add_argument('--ipPlot_bin_num', type=int, default=40)
 parser.add_argument('--laPlot', type=int, default=1)
 args = parser.parse_args()
+from smilelogging.utils import update_args
+args = update_args(args)

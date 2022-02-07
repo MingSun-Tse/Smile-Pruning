@@ -1,0 +1,35 @@
+CodeID: 86b91fe
+batch_size: 12
+cache_ignore: ''
+data_path: ./data
+dataset: tsb
+debug: false
+experiments_dir: null
+ft_adam_lr: 0.01
+ft_epoch: 100
+ft_optimizer: sgd
+ft_print_interval: 10
+ft_sgd_exp_gamma: 0.97
+ft_sgd_lr: 0.01
+ft_sgd_lrDecay: exp
+ft_sgd_momentum: 0.0
+ft_sgd_weightDecay: 0.0
+hacksmile: !!python/object:smilelogging.utils.EmptyClass
+    'ON': true
+    config: smileloggin_config.txt
+ipPlot: 1
+ipPlot_bin_num: 40
+ipPlot_est: bin
+ip_marksize: 5
+laPlot: 1
+loss: ce
+mlp_finalAct: softmax
+mlp_hiddenAct: tanh
+mlp_layers: '[12,10,10,2]'
+mlp_plotPreAct: false
+model: mlp
+note: ''
+pipeline: '[ft]'
+project_name: test
+screen_print: false
+workers: 4

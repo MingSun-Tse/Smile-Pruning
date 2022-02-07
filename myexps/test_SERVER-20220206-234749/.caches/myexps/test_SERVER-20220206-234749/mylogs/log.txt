@@ -1,0 +1,7 @@
+cd /mnt/08a479d1-f99d-4cb0-808b-a0b17e79ff5f/yue/Smile-Pruning
+python main.py --project_name test --hacksmile.ON --hacksmile.config smileloggin_config.txt
+
+[234749 1049 2022/02/06-23:47:49] Warning! Your code is not committed. Cannot be too careful.
+('batch_size': 12) ('cache_ignore': ) ('CodeID': 86b91fe) ('data_path': ./data) ('dataset': tsb) ('debug': False) ('experiments_dir': None) ('ft_adam_lr': 0.01) ('ft_epoch': 100) ('ft_optimizer': sgd) ('ft_print_interval': 10) ('ft_sgd_exp_gamma': 0.97) ('ft_sgd_lr': 0.01) ('ft_sgd_lrDecay': exp) ('ft_sgd_momentum': 0.0) ('ft_sgd_weightDecay': 0.0) ('hacksmile': <smilelogging.utils.EmptyClass object at 0x7fcb5cdc9c88>) ('ip_marksize': 5) ('ipPlot': 1) ('ipPlot_bin_num': 40) ('ipPlot_est': bin) ('laPlot': 1) ('loss': ce) ('mlp_finalAct': softmax) ('mlp_hiddenAct': tanh) ('mlp_layers': [12,10,10,2]) ('mlp_plotPreAct': False) ('model': mlp) ('note': ) ('pipeline': [ft]) ('project_name': test) ('screen_print': False) ('workers': 4) 
+
+[234749 1049 2022/02/06-23:47:52] ==> Caching various config files to 'myexps/test_SERVER-20220206-234749/.caches'

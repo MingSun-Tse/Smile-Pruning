@@ -1,3 +1,4 @@
+# dataset init
 from importlib import import_module
 import os
 import numpy as np
@@ -8,7 +9,7 @@ from torch.utils.data import DataLoader
 class Data(object):
 	def __init__(self, args):
 		self.args = args
-		loader = import_module("data.%s" % args.dataset)
+		loader = import_module("dataset.%s" % args.dataset)
 		path = os.path.join(args.data_path, args.dataset)
 		train_set, test_set = loader.get_datasets(path, args.batch_size)
 

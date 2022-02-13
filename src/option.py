@@ -2,9 +2,9 @@ import argparse
 from smilelogging import argparser as parser
 from pdb import set_trace as st
 
-parser.add_argument('--data_path', type=str, default='./data')
-parser.add_argument('--dataset', type=str, default='tsb')
-parser.add_argument('--batch_size', type=int, default=12)
+parser.add_argument('--data_path', type=str, default='../data')
+parser.add_argument('--dataset', type=str, default='cifar10')
+parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--workers', type=int, default=4)
 parser.add_argument('--model', type=str, default='mlp')
 parser.add_argument('--mlp_layers', type=str, default='[12,10,10,2]')

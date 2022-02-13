@@ -1,6 +1,6 @@
 from utils import optimizer_dict
 
-def finetune(cagos):
+def vanilla_train(cagos):
 	
 	# optimizer
 	optimizer = optimizer_dict(cagos['model'], cagos['args'])

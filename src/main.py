@@ -19,8 +19,6 @@ def main_worker(args):
 
 	# data
 	loader = Data(args)
-	train_loader = loader.train_loader
-	test_loader = loader.test_loader
 
 	# loss
 	criterion = loss_dict(args.loss).cuda()

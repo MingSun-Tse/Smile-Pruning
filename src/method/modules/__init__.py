@@ -1,8 +1,8 @@
 # modules init
-from .vanilla_train import vanilla_train
+from .train import train
 from .prune import prune
 
 module_dict = {
-	'vanilla_train': vanilla_train,
+	'train': train,
 	'prune': prune,
 }

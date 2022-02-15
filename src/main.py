@@ -28,19 +28,13 @@ def main_worker(args):
 	# model = torch.nn.DataParallel(model).cuda()
 	model = model.cuda()
 
-	# pipeline
-	# pipeline level variable
-	train_index, train_loss_list, train_acc1_list = [], [], []
-	test_index, test_loss_list, test_acc1_list = [], [], []
-	input_bunch = [loader, train_loader, test_loader, criterion, model, args,
-					train_index, train_loss_list, train_acc1_list,
-					test_index, test_loss_list, test_acc1_list]
+	# method
+	# assign method input: model, loader, criterion, args, logger
+	logger.misc_results = {}
 
-	pipeline = strlist_to_list(args.pipeline, str)
-	for each_module_str in pipeline:
-		each_module = module_dict[each_module_str]
-		input_bunch = each_module(*input_bunch)
-		# update config for each module
+	method = method_dict[args.method](model, loader, criterion, args, logger)
+
+	method.operate()
 
 	# pipeline level analysis
 	if args.ipPlot == 1:
@@ -50,20 +44,6 @@ def main_worker(args):
 	if args.laPlot == 1:
 		print('plot la')
 		loss_acc_plot(input_bunch, args, logger)
-
-	# edge_(input_bunch, args, logger, loader)
-	# renyi_(input_bunch, args, logger, loader)
-
-	
-	
-
-	
-
-	
-
-	
-
-
 
 
 if __name__ == '__main__':

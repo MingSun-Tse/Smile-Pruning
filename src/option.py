@@ -6,7 +6,7 @@ parser.add_argument('--data_path', type=str, default='../data')
 parser.add_argument('--dataset', type=str, default='cifar10')
 parser.add_argument('--batch_size', type=int, default=256)
 parser.add_argument('--workers', type=int, default=4)
-parser.add_argument('--model', type=str, default='mlp')
+
 parser.add_argument('--mlp_layers', type=str, default='[12,10,10,2]')
 parser.add_argument('--mlp_hiddenAct', type=str, default='tanh')
 parser.add_argument('--mlp_finalAct', type=str, default='softmax')
@@ -31,6 +31,10 @@ parser.add_argument('--laPlot', type=int, default=1)
 
 parser.add_argument('--hacksmile.ON', action='store_true')
 parser.add_argument('--hacksmile.config', type=str)
+
+parser.add_argument('--method', type=str, default='lth')
+parser.add_argument('--model', type=str, default='resnet56')
+
 args = parser.parse_args()
 from smilelogging.utils import update_args
 args = update_args(args)

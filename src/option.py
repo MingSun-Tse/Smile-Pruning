@@ -184,6 +184,10 @@ parser.add_argument('--utils.check_kernel_spatial_dist', action="store_true")
 parser.add_argument('--utils.check_grad_norm', action="store_true")
 parser.add_argument('--utils.check_weight_stats', action="store_true")
 
+# Customize smilelogging
+parser.add_argument('--hacksmile.ON', action='store_true')
+parser.add_argument('--hacksmile.config', type=str, default='configs/smilelogging_config.txt')
+
 args = parser.parse_args()
 
 # parse for layer-wise prune ratio

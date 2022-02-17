@@ -1,7 +1,7 @@
 # pruner init
 from importlib import import_module
-from .mag_pruner import mag_pruner
+from .l1_pruner import l1_pruner
 
 pruner_dict = {
-	'mag': mag_pruner,
+	'l1': l1_pruner,
 }

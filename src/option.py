@@ -34,6 +34,7 @@ parser.add_argument('--hacksmile.config', type=str)
 
 parser.add_argument('--method', type=str, default='lth')
 parser.add_argument('--model', type=str, default='resnet56')
+parser.add_argument('--pruner', type=str, default='l1')
 
 args = parser.parse_args()
 from smilelogging.utils import update_args

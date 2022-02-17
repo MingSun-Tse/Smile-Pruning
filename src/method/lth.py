@@ -2,7 +2,7 @@ from method.modules import module_dict
 from utils import strlist_to_list
 
 def lth(model, loader, criterion, args, logger):
-	lth_pipe = '[train, prune, reinit, train]'
+	lth_pipe = '[prune, reinit, train]'
 	pipeline = strlist_to_list(lth_pipe, str)
 
 	for each_module_str in pipeline:

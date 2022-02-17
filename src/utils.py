@@ -116,62 +116,12 @@ def accuracy(output, target, topk=(1,)):
             res.append(correct_k.mul_(100.0 / batch_size))
         return res
 
-def train(train_loader, model, criterion, optimizer, epoch, args):
-    batch_time = AverageMeter('Time', ':6.3f')
-    data_time = AverageMeter('Data', ':6.3f')
-    losses = AverageMeter('Loss', ':.4e')
-    top1 = AverageMeter('Acc@1', ':6.2f')
-    top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(train_loader),
-        [batch_time, data_time, losses, top1, top5],
-        prefix="Epoch: [{}]".format(epoch))
-
-    model.train()
-
-    end = time.time()
-    train_epoch_index = []
-    for i, (x, y, index) in enumerate(train_loader):
-        data_time.update(time.time() - end)
-        train_epoch_index = train_epoch_index + index.tolist()
-
-        x = x.cuda()
-        y = y.cuda()
-
-        y_ = model(x)
-        loss = criterion(y_, y)
-
-        if args.dataset == 'tsb':
-            acc1, acc5 = accuracy(y_, y, topk=(1,2))
-        else:
-            acc1, acc5 = accuracy(y_, y, topk=(1,5))
-
-        losses.update(loss.item(), x.size(0))
-        top1.update(acc1[0], x.size(0))
-        top5.update(acc5[0], x.size(0))
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-
-        batch_time.update(time.time() - end)
-        end = time.time()
-
-        if i % args.ft_print_interval == 0:
-            progress.display(i)
-
-    return np.array(train_epoch_index)
-    # TODO: train no more need to return index
-
 def validate(val_loader, model, criterion, args):
     batch_time = AverageMeter('Time', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
     top1 = AverageMeter('Acc@1', ':6.2f')
     top5 = AverageMeter('Acc@5', ':6.2f')
-    progress = ProgressMeter(
-        len(val_loader),
-        [batch_time, losses, top1, top5],
-        prefix='Test: ')
+    progress = ProgressMeter(len(val_loader), [batch_time, losses, top1, top5], prefix='Test: ')
 
     train_state = model.training
 
@@ -180,9 +130,7 @@ def validate(val_loader, model, criterion, args):
     time_compute = []
     with torch.no_grad():
         end = time.time()
-        val_epoch_index = []
-        for i, (x, y, index) in enumerate(val_loader):
-            val_epoch_index = val_epoch_index + index.tolist()
+        for i, (x, y) in enumerate(val_loader):
 
             x = x.cuda()
             y = y.cuda()
@@ -209,7 +157,7 @@ def validate(val_loader, model, criterion, args):
         if train_state:
             model.train()
 
-    return top1.avg.item(), top5.avg.item(), losses.avg, np.array(val_epoch_index)
+    return top1.avg.item(), top5.avg.item(), losses.avg
 
 def get_aligned_feats(representations, order):
     for epoch in range(len(representations)):

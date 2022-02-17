@@ -4,9 +4,10 @@ from math import ceil
 from pdb import set_trace as st
 import torch.nn as nn
 import torch
+from .pruner import pruner_dict
 
-def prune(cagos):
-	pruner = mag_pruner(model, args)
+def prune(model, loader, criterion, args, logger):
+	pruner = pruner_dict[args.pruner](model, args)
 	model = pruner.prune()
 
 	model.mask = pruner.mask

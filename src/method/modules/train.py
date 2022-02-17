@@ -1,9 +1,9 @@
-from utils import optimizer_dict, AverageMeter, ProgressMeter
+from utils import optimizer_dict, AverageMeter, ProgressMeter, accuracy, validate
 import torch
 import time
+from pdb import set_trace as st
 
 def train(model, loader, criterion, args, logger):
-	
 	# optimizer
 	optimizer = optimizer_dict(model, args)
 	scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.97)
@@ -14,28 +14,16 @@ def train(model, loader, criterion, args, logger):
 		scheduler.step()
 
 		# validate on test
-		cagos['model'].reset()
-		test_acc1, test_acc5, test_loss, test_epoch_index = validate(cagos['loader'].test_loader, 
-																	 cagos['model'], 
-																	 cagos['criterion'], 
-																	 cagos['args']
-																	 )
-		cagos['test_index'].append(test_epoch_index)
-		cagos['model'].next_epoch('test')
-		cagos['test_acc1_list'].append(test_acc1)
-		cagos['test_loss_list'].append(test_loss)
+		test_acc1, test_acc5, test_loss = validate(loader.test_loader, model, criterion, args)
+		logger.misc_results['test_acc1'] += [epoch, test_acc1]
+		logger.misc_results['test_acc5'] += [epoch, test_acc5]
+		logger.misc_results['test_loss'] += [epoch, test_loss]
 
 		# validate on train
-		cagos['model'].reset()
-		train_acc1, train_acc5, train_loss, train_epoch_index = validate(cagos['loader'].train_loader, 
-																		 cagos['model'], 
-																		 cagos['criterion'], 
-																		 cagos['args']
-																		 )
-		cagos['train_index'].append(train_epoch_index)
-		cagos['model'].next_epoch('train')
-		cagos['train_acc1_list'].append(train_acc1)
-		cagos['train_loss_list'].append(train_loss)
+		train_acc1, train_acc5, train_loss = validate(loader.train_loader, model, criterion, args)
+		logger.misc_results['train_acc1'] += [epoch, train_acc1]
+		logger.misc_results['train_acc5'] += [epoch, train_acc5]
+		logger.misc_results['train_loss'] += [epoch, train_loss]
 
 def one_epoch_train(loader, model, criterion, optimizer, epoch, args):
     batch_time = AverageMeter('Time', ':6.3f')

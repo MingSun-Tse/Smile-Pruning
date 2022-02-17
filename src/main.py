@@ -24,13 +24,13 @@ def main_worker(args):
 	criterion = loss_dict(args.loss).cuda()
 
 	# model
-	model = model_dict[args.model](args)
+	model = model_dict[args.model](num_classes=10)
 	# model = torch.nn.DataParallel(model).cuda()
 	model = model.cuda()
 
 	# method
 	# assign method input: model, loader, criterion, args, logger
-	logger.misc_results = {}
+	logger.misc_results = {'train_acc1': [], 'train_acc5': [], 'train_loss': [], 'test_acc1': [], 'test_acc5': [], 'test_loss': []}
 
 	method = method_dict[args.method](model, loader, criterion, args, logger)
 

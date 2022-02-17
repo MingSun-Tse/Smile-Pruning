@@ -6,9 +6,9 @@ import torch.nn as nn
 import torch
 from .meta_pruner import MetaPruner
 
-class mag_pruner(MetaPruner):
+class l1_pruner(MetaPruner):
 	def __init__(self, model, args):
-		super(mag_pruner, self).__init__(model, args)
+		super(l1_pruner, self).__init__(model, args)
 
 	def prune(self):
 		self._get_kept_wg_mag()

@@ -2,6 +2,9 @@
 .script_history
 Debug_Dir
 Experiments
+data
+experiments
+debug
 data/cifar10*
 data/mnist
 data/imagenet*

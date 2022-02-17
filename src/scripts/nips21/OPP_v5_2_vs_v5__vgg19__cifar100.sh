@@ -1,0 +1,22 @@
+# opp v5_2
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.9_lrft0.01__OppScheme5_2_lwopp100000_NotApplyReg --stage_pr 1-15:0.9 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5_2 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.7_lrft0.01__OppScheme5_2_lwopp100000_NotApplyReg --stage_pr 1-15:0.7 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5_2 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.5_lrft0.01__OppScheme5_2_lwopp100000_NotApplyReg --stage_pr 1-15:0.5 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5_2 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.3_lrft0.01__OppScheme5_2_lwopp100000_NotApplyReg --stage_pr 1-15:0.3 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5_2 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.1_lrft0.01__OppScheme5_2_lwopp100000_NotApplyReg --stage_pr 1-15:0.1 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5_2 --lw_opp 100000 --not_apply_reg
+
+
+# opp v5
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.9_lrft0.01__OppScheme5_lwopp100000_NotApplyReg --stage_pr 1-15:0.9 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.7_lrft0.01__OppScheme5_lwopp100000_NotApplyReg --stage_pr 1-15:0.7 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.5_lrft0.01__OppScheme5_lwopp100000_NotApplyReg --stage_pr 1-15:0.5 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.3_lrft0.01__OppScheme5_lwopp100000_NotApplyReg --stage_pr 1-15:0.3 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5 --lw_opp 100000 --not_apply_reg
+
+python main.py --method OPP -a vgg19 --lr_ft 0:0.01,60:0.001,90:0.0001 --epochs 120 --base_model_path Experiments/*SERVER138-20200530-145041/weights/checkpoint_best.pth --screen --dataset cifar100 --wd 0.0005 --batch_size 256 --batch_size_prune 256 --project OPP__vgg19__cifar100__pr0.1_lrft0.01__OppScheme5_lwopp100000_NotApplyReg --stage_pr 1-15:0.1 --update_reg_interval 10 --stabilize 10000 --opp_scheme 5 --lw_opp 100000 --not_apply_reg

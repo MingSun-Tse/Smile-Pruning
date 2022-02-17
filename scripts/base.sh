@@ -1,3 +1,0 @@
-CUDA_VISIBLE_DEVICES=0 python main.py -a mobilenet_v2 --pretrained --method L1 --dataset imagenet --index_layer name_matching --stage_pr *features.*.conv.0.0:0.5,*features.1.conv.0.0:0,*features.17.conv.2:0.5 --lr_ft 0:1e-2,30:1e-3,60:1e-4,75:1e-5 --epochs 90 --project L1__mobilenet_v2__imagenet__pr0.3__lrft0.01 -j 12
-
-CUDA_VISIBLE_DEVICES=0,1,2,3 python main.py -a vgg11_bn --method L1 --dataset imagenet --stage_pr [1-7:0.5] --lr_ft 0:0.1,45:0.01,90:0.001,135:0.0001,158:0.00001 --epochs 180 --project Scratch__vgg11_bn__imagenet__pr0.5_Epochs180__PthReset -j 16 --resume_path Experiments/Scratch__vgg11_bn__imagenet__pr0.5_Epochs180__PthReset_SERVER-20211117-035552/weights/checkpoint.pth 

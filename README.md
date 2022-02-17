@@ -1,15 +1,5 @@
-# Regularization-Pruning
-
-This repository is for the new deep neural network pruning methods introduced in the following paper:
-> **Neural Pruning via Growing Regularization [[arxiv](https://arxiv.org/abs/2012.09243)]** \
-> [Huan Wang](http://huanwang.tech/), [Can Qin](http://canqin.tech/), [Yulun Zhang](http://yulunzhang.com/), and [Yun Fu](http://www1.ece.neu.edu/~yunfu/) \
-> Northeastern University, Boston, MA, USA
-
-TLDR: This paper introduces two new neural network pruning methods (named `GReg-1` and `GReg-2`) based on uniformly growing (L2) regularization:
-- `GReg-1` is simply a variant of [magnitude pruning](https://arxiv.org/abs/1608.08710) (i.e., unimportant weights are decided by magnitude sorting). We utilize growing regularition to drive the unimportant weights to zero before evetually removing them.
-- `GReg-2` seeks to exploit the Hessian information for more accurate pruning *without Hessian approximation* (which is usually intractable for modern deep nets). The point is that we find with the uniformly growing regularization, how the weights respond can reflect their underlying curvature landscapes, which will ultimately lead to weight seperation in terms of their magnitude (shown in the figure below). When the magnitude gap is large enough, we can faithfully prune them simply by magnitude.
-<center><img src="readme_figures/L1norm_vs_iter.png" width="700" hspace="10"></center>
-
+# Smile-Pruning
+This repository is meant to provide a generic base code for neural network pruning, especially for [Pruning at Initialization](https://github.com/MingSun-Tse/Awesome-Pruning-at-Initialization).
 
 ## Step 1: Set up environment
 - OS: Linux (Ubuntu 1404 and 1604 checked. It should be all right for most linux platforms. Windows and MacOS not checked.)
@@ -19,12 +9,16 @@ TLDR: This paper introduces two new neural network pruning methods (named `GReg-
 
 After the installlations, download the code:
 ```
-git clone git@github.com:MingSun-Tse/Regularization-Pruning.git -b master
+git clone git@github.com:mingsun-tse/smile-pruning.git -b master
 ```
 
 ## Step 2: Set up dataset
 - We evaluate our methods on CIFAR and ImageNet. CIFAR will be automatically downloaded during training.
 - For ImageNet, prepare it following the official [pytorch imagenet example](https://github.com/pytorch/examples/tree/master/imagenet).
+
+
+
+
 
 
 ## Setp 3: Set up pretrained (unpruned) models
@@ -102,8 +96,7 @@ where `--wg weight` is to indicate the weight group is weight element, i.e., uns
 **How to change the pruning ratio of each layer:** (TODO)
 
 
-
-## Results
+## Implemented Pruning Methods and Results
 Our pruned ImageNet models can be downloaded at this [google drive](https://drive.google.com/file/d/1NHq5YSCejYdQyxJYjQWsyfsHgpN2KCtR/view?usp=sharing). Comparison with other methods is shown below. Both structured pruning (filter pruning) and unstructured pruning are evaluated.
 > **Tips to load our pruned model**. The pruned model (both the pruned architecture and weights) is saved in the `checkpoint_best.pth`. When loading this file using `torch.load()`, the current path MUST be *the root of this code repository* (because it needs the `model` module in the current directory); otherwise, it will report an error.
 

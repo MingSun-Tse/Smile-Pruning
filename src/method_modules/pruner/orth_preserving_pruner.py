@@ -12,8 +12,8 @@ from collections import OrderedDict
 pjoin = os.path.join
 
 class Pruner(MetaPruner):
-    def __init__(self, model, args, logger, passer):
-        super(Pruner, self).__init__(model, args, logger, passer)
+    def __init__(self, model, loader, args, logger, passer):
+        super(Pruner, self).__init__(model, loader, args, logger, passer)
 
         # Reg related variables
         self.reg = {}

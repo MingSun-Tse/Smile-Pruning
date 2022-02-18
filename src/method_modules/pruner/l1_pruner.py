@@ -5,12 +5,12 @@ import time
 import numpy as np
 import torch.optim as optim
 from .meta_pruner import MetaPruner
-from .reinit_model import orth_dist, deconv_orth_dist
+# from .reinit_model import orth_dist, deconv_orth_dist
 from utils import Timer
 
 class Pruner(MetaPruner):
-    def __init__(self, model, args, logger, passer):
-        super(Pruner, self).__init__(model, args, logger, passer)
+    def __init__(self, model, loader, args, logger, passer):
+        super(Pruner, self).__init__(model, loader, args, logger, passer)
 
     def prune(self):
         if self.args.orth_reg_iter > 0:

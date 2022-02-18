@@ -66,7 +66,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
 # @mst
 import os
 from utils import strlist_to_list, strdict_to_dict, check_path, parse_prune_ratio_vgg, merge_args
-from network import num_layers, is_single_branch
+from model import num_layers, is_single_branch
 pjoin = os.path.join
 
 # routine params
@@ -90,7 +90,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
+parser.add_argument('--method', type=str, default="", # choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
         help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--index_layer', type=str, default="numbers", choices=['numbers', 'name_matching'],
@@ -188,6 +188,8 @@ parser.add_argument('--utils.check_weight_stats', action="store_true")
 parser.add_argument('--hacksmile.ON', action='store_true')
 parser.add_argument('--hacksmile.config', type=str, default='configs/smilelogging_config.txt')
 
+parser.add_argument('--pruner', type=str, default='l1')
+parser.add_argument('--reiniter', type=str, default='pth_reset')
 args = parser.parse_args()
 
 # parse for layer-wise prune ratio

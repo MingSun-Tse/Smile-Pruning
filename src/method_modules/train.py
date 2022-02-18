@@ -3,29 +3,24 @@
 import torch
 import torch.nn as nn
 from utils import PresetLRScheduler, adjust_learning_rate, AverageMeter, ProgressMeter, accuracy
-from utils import timer
+from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_
+from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
+from utils import Timer
 import shutil, time, os
 import numpy as np
 pjoin = os.path.join
 
-def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
-    torch.save(state, filename)
+def save_ckpt(save_dir, ckpt, is_best=False, mark=''):
+    out = pjoin(save_dir, "ckpt_last.pth")
+    torch.save(ckpt, out)
     if is_best:
-        shutil.copyfile(filename, 'model_best.pth.tar')
-
-# @mst: use our own save model function
-def save_model(state, is_best=False, mark=''):
-    out = pjoin(logger.weights_path, "checkpoint.pth")
-    torch.save(state, out)
-    if is_best:
-        out_best = pjoin(logger.weights_path, "checkpoint_best.pth")
-        torch.save(state, out_best)
+        out_best = pjoin(save_dir, "ckpt_best.pth")
+        torch.save(ckpt, out_best)
     if mark:
-        out_mark = pjoin(logger.weights_path, "checkpoint_{}.pth".format(mark))
-        torch.save(state, out_mark)
+        out_mark = pjoin(save_dir, "ckpt_{}.pth".format(mark))
+        torch.save(ckpt, out_mark)
 
-
-def train(train_loader, model, criterion, optimizer, epoch, args, print_log=True):
+def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, print_log=True):
     batch_time = AverageMeter('Time', ':6.3f')
     data_time = AverageMeter('Data', ':6.3f')
     losses = AverageMeter('Loss', ':.4e')
@@ -221,14 +216,13 @@ def adjust_learning_rate_v2(optimizer, epoch, iteration, num_iter):
     return lr
 
 
-################################
-def train(model, loader, criterion, args, logger):
+def train(model, loader, args, logger, passer):
     train_loader = loader.train_loader
-    val_loader = loader.val_loader
-    best_acc1 = logger.misc['best_acc1']
-    best_acc1_epoch = logger.misc['best_acc1_epoch']
+    val_loader = loader.test_loader
+    best_acc1, best_acc1_epoch = 0, 0
     print_log = True
     accprint = logger.accprint
+    criterion = passer['criterion']
 
     # since model is new, we need a new optimizer
     if args.solver == 'Adam':
@@ -239,12 +233,14 @@ def train(model, loader, criterion, args, logger):
         optimizer = torch.optim.SGD(model.parameters(), args.lr,
                                     momentum=args.momentum,
                                     weight_decay=args.weight_decay)
+    
     # set lr finetune schduler for finetune
     if args.method:
         assert args.lr_ft is not None
         lr_scheduler = PresetLRScheduler(args.lr_ft)
     
     acc1_list, loss_train_list, loss_test_list, last_lr  = [], [], [], 0
+    timer = Timer(args.epochs - args.start_epoch)
     for epoch in range(args.start_epoch, args.epochs):
         if args.distributed:
             train_sampler.set_epoch(epoch)
@@ -269,11 +265,11 @@ def train(model, loader, criterion, args, logger):
                 }
                 if args.wg == 'weight':
                     state['mask'] = mask 
-                save_model(state, mark=f'lr{last_lr}_epoch{epoch}')
+                save_ckpt(save_dir, state, mark=f'lr{last_lr}_epoch{epoch}')
                 print(f'==> Save ckpt at the last epoch ({epoch}) of LR {last_lr}')
 
         # train for one epoch
-        train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
+        one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, print_log=print_log)
         if hasattr(args, 'advanced_lr'): # advanced_lr will adjust lr inside the train fn
             lr = args.advanced_lr.lr
         last_lr = lr
@@ -316,9 +312,7 @@ def train(model, loader, criterion, args, logger):
         ngpus_per_node = torch.cuda.device_count()
         if not args.multiprocessing_distributed or (args.multiprocessing_distributed
                 and args.rank % ngpus_per_node == 0):
-            if args.method:
-                # @mst: use our own save func
-                state = {'epoch': epoch + 1,
+                ckpt = {'epoch': epoch + 1,
                         'arch': args.arch,
                         'model': model,
                         'state_dict': model.state_dict(),
@@ -329,21 +323,9 @@ def train(model, loader, criterion, args, logger):
                         'prune_state': 'finetune',
                 }
                 if args.wg == 'weight':
-                    state['mask'] = mask 
-                save_model(state, is_best)
-            else:
-                save_checkpoint({
-                    'epoch': epoch + 1,
-                    'arch': args.arch,
-                    'state_dict': model.state_dict(),
-                    'best_acc1': best_acc1,
-                    'optimizer' : optimizer.state_dict(),
-                }, is_best)
+                    ckpt['mask'] = mask 
+                save_dir = logger.weights_path
+                save_ckpt(save_dir, ckpt, is_best)
     
-    last5_acc_mean, last5_acc_std = np.mean(acc1_list[-args.last_n_epoch:]), np.std(acc1_list[-args.last_n_epoch:])
-    last5_loss_train_mean, last5_loss_train_std = np.mean(loss_train_list[-args.last_n_epoch:]), np.std(loss_train_list[-args.last_n_epoch:])
-    last5_loss_test_mean, last5_loss_test_std = np.mean(loss_test_list[-args.last_n_epoch:]), np.std(loss_test_list[-args.last_n_epoch:])
-    
-    best = [best_acc1, best_loss_train, best_loss_test]
-    last5 = [last5_acc_mean, last5_acc_std, last5_loss_train_mean, last5_loss_train_std, last5_loss_test_mean, last5_loss_test_std]
+    print(f'==> Train is done.')
     return model

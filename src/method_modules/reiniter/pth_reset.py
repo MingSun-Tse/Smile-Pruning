@@ -197,3 +197,14 @@ def orth_regularization_v6(w, pruned_wg, penalty_map):
     loss_map = F.mse_loss(torch.matmul(w_, w_.t()), identity, reduction='none') * penalty_map
     loss = loss_map.mean()
     return loss
+
+class Reiniter():
+    def __init__(self, model, loader, args, logger, passer):
+        self.model = model
+
+    def reinit(self):
+        learnable_modules = (nn.Conv2d, nn.Linear, nn.BatchNorm2d)
+        for _, module in self.model.named_modules():
+            if isinstance(module, learnable_modules):
+                module.reset_parameters()
+        print('==> Reinit model: use pytorch reset_parameters()')

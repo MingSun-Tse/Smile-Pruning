@@ -6,8 +6,8 @@ from .meta_pruner import MetaPruner
 import itertools
 
 class Pruner(MetaPruner):
-    def __init__(self, model, args, logger, passer):
-        super(Pruner, self).__init__(model, args, logger, passer)
+    def __init__(self, model, loader, args, logger, passer):
+        super(Pruner, self).__init__(model, loader, args, logger, passer)
         self.test_trainset = lambda net: passer.test(passer.train_loader, net, passer.criterion, passer.args)
         self.finetune = lambda net: passer.finetune(net, passer.train_loader, passer.test_loader, passer.train_sampler, 
                                 passer.criterion, passer.pruner, best_acc1=0, best_acc1_epoch=0, args=passer.args, print_log=False)

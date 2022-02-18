@@ -9,8 +9,8 @@ from utils import PresetLRScheduler, Timer
 from pdb import set_trace as st
 
 class Pruner(MetaPruner):
-    def __init__(self, model, args, logger, passer):
-        super(Pruner, self).__init__(model, args, logger, passer)
+    def __init__(self, model, loader, args, logger, passer):
+        super(Pruner, self).__init__(model, loader, args, logger, passer)
         self.pr_backup = {}
         for k, v in self.pr.items():
             self.pr_backup[k] = v

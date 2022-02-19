@@ -1,0 +1,4 @@
+pruner: greg1
+update_reg_interval: 1
+reg_upper_limit: 0.001
+stabilize_reg_interval: 100

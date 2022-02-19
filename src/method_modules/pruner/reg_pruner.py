@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os, copy, time, pickle, numpy as np, math
 from .meta_pruner import MetaPruner
-from utils import plot_weights_heatmap, Timer
+from utils import plot_weights_heatmap, Timer, AverageMeter, ProgressMeter, accuracy
 import matplotlib.pyplot as plt
 pjoin = os.path.join
 tensor2list = lambda x: x.cpu().data.numpy().tolist()
@@ -28,16 +28,16 @@ class Pruner(MetaPruner):
         self.all_layer_finish_pick = False
         self.w_abs = {}
         self.mag_reg_log = {}
-        if self.args.__dict__.get('AdaReg_only_picking'): # AdaReg is the old name for GReg-2
+        if self.args.__dict__.get('AdaReg_only_picking'): # AdaReg is the old name for greg2
             self.original_model = copy.deepcopy(self.model)
         
         # prune_init, to determine the pruned weights
         # this will update the 'self.kept_wg' and 'self.pruned_wg' 
-        if self.args.method in ['GReg-1', 'GReg-2']:
+        if self.args.pruner in ['greg1', 'greg2']:
             self._get_kept_wg_L1()
         for k, v in self.pruned_wg.items():
             self.pruned_wg_L1[k] = v
-        if self.args.method == 'GReg-2': # GReg-2 will determine which wgs to prune later, so clear it here
+        if self.args.pruner == 'greg2': # greg2 will determine which wgs to prune later, so clear it here
             self.kept_wg = {}
             self.pruned_wg = {}
 
@@ -238,7 +238,7 @@ class Pruner(MetaPruner):
             picked_wg_in_common = [i for i in pruned_wg if i in self.pruned_wg_L1[name]]
             common_ratio = len(picked_wg_in_common) / len(pruned_wg) if len(pruned_wg) else -1
             n_finish_pick = len(self.iter_finish_pick)
-            print("    [%d] just finished pick (n_finish_pick = %d). %.2f in common chosen by L1 & GReg-2. Iter = %d" % 
+            print("    [%d] just finished pick (n_finish_pick = %d). %.2f in common chosen by L1 & greg2. Iter = %d" % 
                 (layer_index, n_finish_pick, common_ratio, self.total_iter))
             
             # re-scale the weights to recover the response magnitude
@@ -285,9 +285,9 @@ class Pruner(MetaPruner):
                 
                 # update reg functions, two things: 
                 # (1) update reg of this layer (2) determine if it is time to stop update reg
-                if self.args.method == "GReg-1":
+                if self.args.pruner == "greg1":
                     finish_update_reg = self._greg_1(m, name)
-                elif self.args.method == "GReg-2":
+                elif self.args.pruner == "greg2":
                     finish_update_reg = self._greg_2(m, name)
                 else:
                     print("Wrong '--method' argument, please check.")
@@ -362,7 +362,70 @@ class Pruner(MetaPruner):
                 'hist_mag_ratio': self.hist_mag_ratio,
                 'ExpID': self.logger.ExpID,
         }
-        self.save(state, is_best=False, mark=mark)
+        # self.save(state, is_best=False, mark=mark)
+
+    def test(self, model):
+        val_loader = self.test_loader
+        criterion = self.criterion
+        args = self.args
+        batch_time = AverageMeter('Time', ':6.3f')
+        losses = AverageMeter('Loss', ':.4e')
+        top1 = AverageMeter('Acc@1', ':6.2f')
+        top5 = AverageMeter('Acc@5', ':6.2f')
+        progress = ProgressMeter(
+            len(val_loader),
+            [batch_time, losses, top1, top5],
+            prefix='Test: ')
+
+        train_state = model.training
+
+        # switch to evaluate mode
+        model.eval()
+
+        # @mst: add noise to model
+        model_ensemble = []
+        model_ensemble.append(model)
+
+        time_compute = []
+        with torch.no_grad():
+            end = time.time()
+            for i, (images, target) in enumerate(val_loader):
+                if args.gpu is not None:
+                    images = images.cuda(args.gpu, non_blocking=True)
+                target = target.cuda(args.gpu, non_blocking=True)
+
+                # compute output
+                t1 = time.time()
+                output = 0
+                for model in model_ensemble: # @mst: test model ensemble
+                    output += model(images)
+                output /= len(model_ensemble)
+                time_compute.append((time.time() - t1) / images.size(0))
+                loss = criterion(output, target)
+
+                # measure accuracy and record loss
+                acc1, acc5 = accuracy(output, target, topk=(1, 5))
+                losses.update(loss.item(), images.size(0))
+                top1.update(acc1[0], images.size(0))
+                top5.update(acc5[0], images.size(0))
+
+                # measure elapsed time
+                batch_time.update(time.time() - end)
+                end = time.time()
+
+                if i % args.print_freq == 0:
+                    progress.display(i)
+
+            # TODO: this should also be done with the ProgressMeter
+            # print(' * Acc@1 {top1.avg:.3f} Acc@5 {top5.avg:.3f}'
+            #       .format(top1=top1, top5=top5))
+            # @mst: commented because we will use another print outside 'validate'
+        # print("time compute: %.4f ms" % (np.mean(time_compute)*1000))
+
+        # change back to original model state if necessary
+        if train_state:
+            model.train()
+        return top1.avg.item(), top5.avg.item(), losses.avg # @mst: added returning top5 acc and loss
 
     def prune(self):
         self.model = self.model.train()
@@ -392,8 +455,8 @@ class Pruner(MetaPruner):
                 # test
                 if total_iter % self.args.test_interval == 0:
                     acc1, acc5, *_ = self.test(self.model)
-                    self.accprint("Acc1 = %.4f Acc5 = %.4f Iter = %d (before update) [prune_state = %s, method = %s]" % 
-                        (acc1, acc5, total_iter, self.prune_state, self.args.method))
+                    self.accprint("Acc1 = %.4f Acc5 = %.4f Iter = %d (before update) [prune_state = %s, pruner = %s]" % 
+                        (acc1, acc5, total_iter, self.prune_state, self.args.pruner))
                 
                 # save model (save model before a batch starts)
                 if total_iter % self.args.save_interval == 0:
@@ -402,8 +465,8 @@ class Pruner(MetaPruner):
                     
                 if total_iter % self.args.print_interval == 0:
                     print("")
-                    print("Iter = %d [prune_state = %s, method = %s] " 
-                        % (total_iter, self.prune_state, self.args.method) + "-"*40)
+                    print("Iter = %d [prune_state = %s, pruner = %s] " 
+                        % (total_iter, self.prune_state, self.args.pruner) + "-"*40)
                     
                 # forward
                 self.model.train()
@@ -448,7 +511,7 @@ class Pruner(MetaPruner):
                     print("After optim update current_train_loss: %.4f current_train_acc: %.4f" % (loss.item(), train_acc))
                             
                 if self.args.__dict__.get('AdaReg_only_picking') and self.all_layer_finish_pick:
-                    print("GReg-2 just finished picking for all layers. Resume original model and switch to GReg-1. Iter = %d" % total_iter)
+                    print("greg2 just finished picking for all layers. Resume original model and switch to greg1. Iter = %d" % total_iter)
                     
                     # save picked wg
                     pkl_path = os.path.join(self.logger.log_path, 'picked_wg.pkl')
@@ -456,13 +519,13 @@ class Pruner(MetaPruner):
                         pickle.dump(self.pruned_wg, f)
                     exit(0)
                     
-                    # set to GReg-1 method
+                    # set to greg1 method
                     self.model = self.original_model # reload the original model
                     self.optimizer = optim.SGD(self.model.parameters(), 
                                             lr=self.args.lr_prune, 
                                             momentum=self.args.momentum,
                                             weight_decay=self.args.weight_decay)
-                    self.args.method = "GReg-1"
+                    self.args.pruner = "greg1"
                     self.args.AdaReg_only_picking = False # do not get in again
                     # reinit
                     for k in self.reg:
@@ -471,7 +534,7 @@ class Pruner(MetaPruner):
                 
                 if self.args.__dict__.get('AdaReg_revive_kept') and self.all_layer_finish_pick:
                     self._prune_and_build_new_model()
-                    print("GReg-2 just finished picking for all layers. Pruned and go to 'finetune'. Iter = %d" % total_iter)
+                    print("greg2 just finished picking for all layers. Pruned and go to 'finetune'. Iter = %d" % total_iter)
                     return copy.deepcopy(self.model)
                 
                 # change prune state

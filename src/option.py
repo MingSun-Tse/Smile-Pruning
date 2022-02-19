@@ -65,7 +65,7 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'multi node data parallel training')
 # @mst
 import os
-from utils import strlist_to_list, strdict_to_dict, check_path, parse_prune_ratio_vgg, merge_args
+from utils import strlist_to_list, strdict_to_dict, check_path, parse_prune_ratio_vgg
 from model import num_layers, is_single_branch
 pjoin = os.path.join
 
@@ -90,7 +90,7 @@ parser.add_argument('--start_epoch', type=int, default=0)
 parser.add_argument('--save_init_model', action="store_true", help='save the model after initialization')
 
 # general pruning method related
-parser.add_argument('--method', type=str, default="", # choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
+parser.add_argument('--pipeline', type=str, default="", # choices=['', 'L1', 'L1_Iter', 'FixReg', 'GReg-1', 'GReg-2', 'Oracle', 'OPP', 'Merge'], 
         help='pruning method name; default is "", implying the original training without any pruning')
 parser.add_argument('--stage_pr', type=str, default="", help='to appoint layer-wise pruning ratio')
 parser.add_argument('--index_layer', type=str, default="numbers", choices=['numbers', 'name_matching'],
@@ -219,7 +219,8 @@ args.base_pr_model = check_path(args.base_pr_model)
 
 args.previous_layers = strdict_to_dict(args.previous_layers, str)
 
-if args.method in ['L1_Iter']:
+# TODO
+if args.pipeline in ['L1_Iter']:
     assert args.num_cycles > 0
     args.lr_ft_mini = strdict_to_dict(args.lr_ft_mini, float)
 

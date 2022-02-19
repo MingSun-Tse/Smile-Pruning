@@ -16,3 +16,7 @@ train_params/
 corr_analysis_oracle_pruning.jpg
 scripts
 
+
+method_modules/pruner/merge_pruner.py
+method_modules/pruner/oracle_pruner.py
+method_modules/pruner/orth_preserving_pruner.py

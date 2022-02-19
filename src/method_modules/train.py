@@ -85,7 +85,7 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
         optimizer.step()
 
         # @mst: after update, zero out pruned weights
-        if args.method and args.wg == 'weight':
+        if args.pipeline and args.wg == 'weight':
             apply_mask_forward(model)
 
         # @mst: util functionality, check the gradient norm of params
@@ -235,7 +235,7 @@ def train(model, loader, args, logger, passer):
                                     weight_decay=args.weight_decay)
     
     # set lr finetune schduler for finetune
-    if args.method:
+    if args.pipeline:
         assert args.lr_ft is not None
         lr_scheduler = PresetLRScheduler(args.lr_ft)
     
@@ -247,7 +247,7 @@ def train(model, loader, args, logger, passer):
         
         # @mst: use our own lr scheduler
         if not hasattr(args, 'advanced_lr'): # 'advanced_lr' can override 'lr_scheduler' and 'adjust_learning_rate'
-            lr = lr_scheduler(optimizer, epoch) if args.method else adjust_learning_rate(optimizer, epoch, args)
+            lr = lr_scheduler(optimizer, epoch) if args.pipeline else adjust_learning_rate(optimizer, epoch, args)
             if print_log:
                 print("==> Set lr = %s @ Epoch %d begins" % (lr, epoch))
 
@@ -275,7 +275,7 @@ def train(model, loader, args, logger, passer):
         last_lr = lr
 
         # @mst: check weights magnitude during finetune
-        if args.method in ['GReg-1', 'GReg-2'] and not isinstance(pruner, type(None)):
+        if args.pipeline in ['GReg-1', 'GReg-2'] and not isinstance(pruner, type(None)):
             for name, m in model.named_modules():
                 if name in pruner.reg:
                     ix = pruner.layers[name].layer_index

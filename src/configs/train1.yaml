@@ -1,1 +1,2 @@
 solver: Adam
+epochs: 2

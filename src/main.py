@@ -230,7 +230,7 @@ def main_worker(gpu, ngpus_per_node, args):
     # 'train,prune,reinit,train,prune,reinit,train'
     from method_modules import module_dict
     from utils import update_args_from_file
-    pipeline, configs = get_pipeline(args.method)
+    pipeline, configs = get_pipeline(args.pipeline)
     for module, config in zip(pipeline, configs):
         passer = {}
         passer['criterion'] = criterion
@@ -241,6 +241,7 @@ def main_worker(gpu, ngpus_per_node, args):
         if config:
             args_copy = update_args_from_file(args_copy, config)
             print(f'==> Args updated from file "{config}".')
+            print(args_copy)
         model = module(model, loader, args_copy, logger, passer)
 
 def get_pipeline(method:str):

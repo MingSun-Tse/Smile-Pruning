@@ -17,10 +17,9 @@ class MetaPruner:
         self.logger = logger
         self.accprint = logger.accprint
         self.netprint = logger.netprint
-        # self.test = lambda net: passer.test(passer.test_loader, net, passer.criterion, passer.args)
-        # self.train_loader = passer['train_loader']
-        # self.criterion = passer['criterion']
-        # self.save = passer['save']
+        self.train_loader = loader.train_loader
+        self.test_loader = loader.test_loader
+        self.criterion = passer['criterion']
         self.input_size = passer['input_size']
         self.is_single_branch = passer['is_single_branch']
 

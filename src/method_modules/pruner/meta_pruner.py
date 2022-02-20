@@ -319,7 +319,7 @@ class MetaPruner:
 
     def _prune_and_build_new_model(self):
         if self.args.wg == 'weight':
-            self._get_masks()
+            self._get_mask()
             return
 
         new_model = copy.deepcopy(self.model)
@@ -380,9 +380,9 @@ class MetaPruner:
         logtmp = logtmp[:-2] + '}'
         print('n_filter of pruned model: %s' % logtmp)
 
-    def _get_masks(self):
-        '''Get masks for unstructured pruning
-        '''
+    def _get_mask(self):
+        r"""Get masks for unstructured pruning.
+        """
         self.mask = {}
         for name, m in self.model.named_modules():
             if isinstance(m, self.learnable_layers):
@@ -390,4 +390,5 @@ class MetaPruner:
                 pruned = self.pruned_wg[name]
                 mask[pruned] = 0
                 self.mask[name] = mask.view_as(m.weight.data)
+        self.model.mask = self.mask
         print('Get masks done for weight pruning')

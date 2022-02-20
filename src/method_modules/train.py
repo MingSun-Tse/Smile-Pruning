@@ -31,12 +31,12 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
         [batch_time, data_time, losses, top1, top5],
         prefix="Epoch: [{}]".format(epoch))
 
-    # switch to train mode
+    # Switch to train mode
     model.train()
 
     end = time.time()
     for i, (images, target) in enumerate(train_loader):
-        # measure data loading time
+        # Measure data loading time
         data_time.update(time.time() - end)
 
         if args.gpu is not None:
@@ -48,17 +48,17 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
             args.advanced_lr.lr = lr
             if i == 10: print(f'==> Set LR to {lr:.6f} Epoch {epoch} Iter {i}')
 
-        # compute output
+        # Compute output
         output = model(images)
         loss = criterion(output, target)
 
-        # measure accuracy and record loss
+        # Measure accuracy and record loss
         acc1, acc5 = accuracy(output, target, topk=(1, 5))
         losses.update(loss.item(), images.size(0))
         top1.update(acc1[0], images.size(0))
         top5.update(acc5[0], images.size(0))
 
-        # orth regularization
+        # Orth regularization
         if args.orth_reg_iter_ft:
             loss_orth_reg, cnt = 0, -1
             for name, module in model.named_modules():
@@ -79,16 +79,16 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
             if i % args.print_interval == 0:
                 print(f'loss_orth_reg (*{args.lw_orth_reg}) {loss_orth_reg:.10f} Epoch {epoch} Iter {i}')
 
-        # compute gradient and do SGD step
+        # Compute gradient and SGD step
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        # @mst: after update, zero out pruned weights
-        if args.pipeline and args.wg == 'weight':
-            apply_mask_forward(model)
+        # After update, zero out pruned weights
+        if args.wg == 'weight'and hasattr(model, 'mask'):
+            apply_mask_forward(model, model.mask)
 
-        # @mst: util functionality, check the gradient norm of params
+        # Util functionality, check the gradient norm of params
         if hasattr(args, 'utils') and args.utils.check_grad_norm:
             from utils import check_grad_norm
             if i % args.print_interval == 0:
@@ -96,7 +96,7 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
                 check_grad_norm(model)
                 print(f'(** End check_grad_norm **)'); print('')
 
-        # @mst: util functionality, check the gradient norm of params
+        # Util functionality, check the gradient norm of params
         if hasattr(args, 'utils') and args.utils.check_weight_stats:
             from utils import check_weight_stats
             if i % args.print_interval == 0:
@@ -104,7 +104,7 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
                 check_weight_stats(model)
                 print(f'(** End check_weight_stats **)'); print('')
 
-        # @mst: check Jacobian singular value (JSV)
+        # Check Jacobian singular value (JSV) # TODO-@mst: move to utility
         if args.jsv_interval == -1:
             args.jsv_interval = len(train_loader) # default: check jsv at the last iteration
         if args.jsv_loop and (i + 1) % args.jsv_interval == 0:
@@ -112,7 +112,7 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
             print('JSV_mean %.4f JSV_std %.4f JSV_max %.4f JSV_min %.4f Condition_Number_mean %.4f JSV_diff_mean %.4f JSV_diff_std %.4f -- Epoch %d Iter %d' % 
                 (np.mean(jsv), np.std(jsv), np.max(jsv), np.min(jsv), np.mean(cn), np.mean(jsv_diff), np.std(jsv_diff), epoch, i))
 
-        # measure elapsed time
+        # Measure elapsed time
         batch_time.update(time.time() - end)
         end = time.time()
 
@@ -215,6 +215,10 @@ def adjust_learning_rate_v2(optimizer, epoch, iteration, num_iter):
         param_group['lr'] = lr
     return lr
 
+def apply_mask_forward(model, mask):
+    for name, m in model.named_modules():
+        if name in mask:
+            m.weight.data.mul_(mask[name])
 
 def train(model, loader, args, logger, passer):
     train_loader = loader.train_loader
@@ -322,10 +326,9 @@ def train(model, loader, args, logger, passer):
                         'ExpID': logger.ExpID,
                         'prune_state': 'finetune',
                 }
-                if args.wg == 'weight':
-                    ckpt['mask'] = mask 
-                save_dir = logger.weights_path
-                save_ckpt(save_dir, ckpt, is_best)
+                if args.wg == 'weight' and hasattr(model, 'mask'):
+                    ckpt['mask'] = model.mask
+                save_ckpt(logger.weights_path, ckpt, is_best)
     
     print(f'==> Train is done.')
     return model

@@ -32,7 +32,7 @@ from dataset import Data
 
 # import sys; sys.path.insert(0, '../UtilsHub/smilelogging')
 from smilelogging import Logger
-from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_, PresetLRScheduler, Timer
+from utils import get_n_params, get_n_flops, get_n_params_, get_n_flops_
 from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal, get_jacobian_singular_values
 from utils import Dataset_lmdb_batch
 from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
@@ -46,7 +46,13 @@ logger = Logger(args)
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
 logger.misc = {}
-timer = Timer(args.epochs)
+
+class MyDataParallel(torch.nn.DataParallel):
+    def __getattr__(self, name):
+        try:
+            return super().__getattr__(name)
+        except AttributeError:
+            return getattr(self.module, name)
 # ---
 
 def main():
@@ -174,16 +180,6 @@ def main_worker(gpu, ngpus_per_node, args):
             print("==> Use weight initialization: 'orthogonal_'. Activation: %s" % args.activation)
     print(f'==> Use conv_type: {args.conv_type}')
 
-    # @mst: save the model after initialization if necessary
-    if args.save_init_model:
-        state = {
-                'arch': args.arch,
-                'model': model,
-                'state_dict': model.state_dict(),
-                'ExpID': logger.ExpID,
-        }
-        save_model(state, mark='init')
-
     if args.distributed:
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
@@ -208,13 +204,26 @@ def main_worker(gpu, ngpus_per_node, args):
     else:
         # DataParallel will divide and allocate batch_size to all available GPUs
         if args.arch.startswith('alexnet') or args.arch.startswith('vgg'):
-            model.features = torch.nn.DataParallel(model.features)
+            model.features = MyDataParallel(model.features)
             model.cuda()
         else:
-            model = torch.nn.DataParallel(model).cuda()
+            model = MyDataParallel(model).cuda()
 
-    # @mst: load the unpruned model for pruning 
-    # This may be useful for the non-imagenet cases where we use our pretrained models
+    # Save the model after initialization (useful for LTH)
+    if args.save_init_model:
+        ckpt = {
+                'arch': args.arch,
+                'model': model,
+                'state_dict': model.state_dict(),
+                'ExpID': logger.ExpID,
+        }
+        save_path = f'{logger.weights_path}/ckpt_init.pth'
+        torch.save(ckpt, save_path)
+        args.passer['ckpt_init'] = save_path
+        print(f'==> Save initial weights at "{save_path}"')
+
+    # Load the unpruned model for pruning 
+    # This may be useful for the non-imagenet cases where we use our pretrained models.
     if args.base_model_path:
         ckpt = torch.load(args.base_model_path)
         logstr = f'==> Load pretrained ckpt successfully: "{args.base_model_path}".'
@@ -226,8 +235,8 @@ def main_worker(gpu, ngpus_per_node, args):
             acc1, acc5, loss_test = validate(val_loader, model, criterion, args)
             logstr += f'Its accuracy: {acc1:.4f}.'
         print(logstr)
-
-    # 'train,prune,reinit,train,prune,reinit,train'
+    
+    ################################## Core pipeline ##################################
     from method_modules import module_dict
     from utils import update_args_from_file
     pipeline, configs = get_pipeline(args.pipeline)
@@ -243,6 +252,8 @@ def main_worker(gpu, ngpus_per_node, args):
             print(f'==> Args updated from file "{config}".')
             print(args_copy)
         model = module(model, loader, args_copy, logger, passer)
+    ###################################################################################
+    
 
 def get_pipeline(method:str):
     pipeline, configs = [], []

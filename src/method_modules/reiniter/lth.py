@@ -4,7 +4,7 @@ import torch.nn as nn
 class Reiniter():
     def __init__(self, model, loader, args, logger, passer):
         self.model = model
-        self.ckpt_init = args.passer['ckpt_init']
+        self.ckpt_init = logger.passer['ckpt_init']
 
     def reinit(self):
         assert hasattr(self.model, 'mask'), "'model' should has attr 'mask'."

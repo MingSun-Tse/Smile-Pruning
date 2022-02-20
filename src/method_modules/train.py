@@ -228,6 +228,19 @@ def train(model, loader, args, logger, passer):
     accprint = logger.accprint
     criterion = passer['criterion']
 
+    # Save the model after initialization (useful for LTH)
+    if args.save_init_model:
+        ckpt = {
+                'arch': args.arch,
+                'model': model,
+                'state_dict': model.state_dict(),
+                'ExpID': logger.ExpID,
+        }
+        save_path = f'{logger.weights_path}/ckpt_init.pth'
+        torch.save(ckpt, save_path)
+        logger.passer['ckpt_init'] = save_path
+        print(f'==> Save initial weights at "{save_path}"')
+
     # since model is new, we need a new optimizer
     if args.solver == 'Adam':
         print('==> Start to finetune: using Adam optimizer')

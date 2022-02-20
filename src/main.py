@@ -46,6 +46,7 @@ logger = Logger(args)
 accprint = logger.log_printer.accprint
 netprint = logger.netprint
 logger.misc = {}
+logger.passer = {}
 
 class MyDataParallel(torch.nn.DataParallel):
     def __getattr__(self, name):
@@ -93,6 +94,11 @@ def main():
 
 def main_worker(gpu, ngpus_per_node, args):
     args.gpu = gpu
+    
+    # Set up pipeline
+    from method_modules import module_dict
+    from utils import update_args_from_file
+    pipeline, configs = get_pipeline(args.pipeline)
 
     # Data loading code
     train_sampler = None
@@ -209,19 +215,6 @@ def main_worker(gpu, ngpus_per_node, args):
         else:
             model = MyDataParallel(model).cuda()
 
-    # Save the model after initialization (useful for LTH)
-    if args.save_init_model:
-        ckpt = {
-                'arch': args.arch,
-                'model': model,
-                'state_dict': model.state_dict(),
-                'ExpID': logger.ExpID,
-        }
-        save_path = f'{logger.weights_path}/ckpt_init.pth'
-        torch.save(ckpt, save_path)
-        args.passer['ckpt_init'] = save_path
-        print(f'==> Save initial weights at "{save_path}"')
-
     # Load the unpruned model for pruning 
     # This may be useful for the non-imagenet cases where we use our pretrained models.
     if args.base_model_path:
@@ -237,9 +230,6 @@ def main_worker(gpu, ngpus_per_node, args):
         print(logstr)
     
     ################################## Core pipeline ##################################
-    from method_modules import module_dict
-    from utils import update_args_from_file
-    pipeline, configs = get_pipeline(args.pipeline)
     for module, config in zip(pipeline, configs):
         passer = {}
         passer['criterion'] = criterion

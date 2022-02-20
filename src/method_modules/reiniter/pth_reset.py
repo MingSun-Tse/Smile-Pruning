@@ -199,7 +199,7 @@ def orth_regularization_v6(w, pruned_wg, penalty_map):
     return loss
 
 class Reiniter():
-    def __init__(self, model, loader, args, logger, passer):
+    def __init__(self, model, loader, args, logger):
         self.model = model
 
     def reinit(self):

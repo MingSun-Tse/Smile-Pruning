@@ -11,7 +11,7 @@ from fnmatch import fnmatch, fnmatchcase
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
 class MetaPruner:
-    def __init__(self, model, loader, args, logger, passer):
+    def __init__(self, model, loader, args, logger):
         self.model = model
         self.args = args
         self.logger = logger
@@ -19,9 +19,9 @@ class MetaPruner:
         self.netprint = logger.netprint
         self.train_loader = loader.train_loader
         self.test_loader = loader.test_loader
-        self.criterion = passer['criterion']
-        self.input_size = passer['input_size']
-        self.is_single_branch = passer['is_single_branch']
+        self.criterion = logger.passer['criterion']
+        self.input_size = logger.passer['input_size']
+        self.is_single_branch = logger.passer['is_single_branch']
 
         # register learnable layers
         self.learnable_layers = (nn.Conv2d, nn.Conv1d, nn.Linear) # Note: for now, we only focus on weights in Conv and FC modules, no BN.

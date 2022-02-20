@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 
 class Reiniter():
-    def __init__(self, model, loader, args, logger, passer):
+    def __init__(self, model, loader, args, logger):
         self.model = model
         self.ckpt_init = logger.passer['ckpt_init']
 

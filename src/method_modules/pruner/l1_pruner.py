@@ -9,8 +9,8 @@ from .meta_pruner import MetaPruner
 from utils import Timer
 
 class Pruner(MetaPruner):
-    def __init__(self, model, loader, args, logger, passer):
-        super(Pruner, self).__init__(model, loader, args, logger, passer)
+    def __init__(self, model, loader, args, logger):
+        super(Pruner, self).__init__(model, loader, args, logger)
 
     def prune(self):
         if self.args.orth_reg_iter > 0:

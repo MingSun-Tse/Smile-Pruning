@@ -154,6 +154,7 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda(args.gpu)
+    logger.passer['criterion'] = criterion
 
     if args.gpu is not None:
         print("Use GPU: {} for training".format(args.gpu))
@@ -169,9 +170,9 @@ def main_worker(gpu, ngpus_per_node, args):
                                 world_size=args.world_size, rank=args.rank)
     # create model
     num_classes = num_classes_dict[args.dataset]
-    args.passer = {}
-    args.passer['num_classes'] = num_classes
     *_, num_channels, input_height, input_width = input_size_dict[args.dataset]
+    logger.passer['input_size'] = [1, num_channels, input_height, input_width]
+    logger.passer['is_single_branch'] = is_single_branch
     if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
         if args.pretrained:
             print("=> using pre-trained model '{}'".format(args.arch))
@@ -230,18 +231,17 @@ def main_worker(gpu, ngpus_per_node, args):
         print(logstr)
     
     ################################## Core pipeline ##################################
-    for module, config in zip(pipeline, configs):
-        passer = {}
-        passer['criterion'] = criterion
-        passer['input_size'] = [1, num_channels, input_height, input_width]
-        passer['is_single_branch'] = is_single_branch
-        module = module_dict[module]
+    ix_module = 0
+    for m_name, config in zip(pipeline, configs):
+        ix_module += 1
+        module = module_dict[m_name]
         args_copy = copy.deepcopy(args)
         if config:
             args_copy = update_args_from_file(args_copy, config)
             print(f'==> Args updated from file "{config}".')
             print(args_copy)
-        model = module(model, loader, args_copy, logger, passer)
+        logger.suffix = f'_{logger.ExpID}_methodmodule{ix_module}_{m_name}'
+        model = module(model, loader, args_copy, logger)
     ###################################################################################
     
 

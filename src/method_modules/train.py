@@ -220,13 +220,13 @@ def apply_mask_forward(model, mask):
         if name in mask:
             m.weight.data.mul_(mask[name])
 
-def train(model, loader, args, logger, passer):
+def train(model, loader, args, logger):
     train_loader = loader.train_loader
     val_loader = loader.test_loader
     best_acc1, best_acc1_epoch = 0, 0
     print_log = True
     accprint = logger.accprint
-    criterion = passer['criterion']
+    criterion = logger.passer['criterion']
 
     # Save the model after initialization (useful for LTH)
     if args.save_init_model:

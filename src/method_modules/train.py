@@ -85,7 +85,7 @@ def one_epoch_train(train_loader, model, criterion, optimizer, epoch, args, prin
         optimizer.step()
 
         # After update, zero out pruned weights
-        if args.wg == 'weight'and hasattr(model, 'mask'):
+        if args.wg == 'weight' and hasattr(model, 'mask'):
             apply_mask_forward(model, model.mask)
 
         # Util functionality, check the gradient norm of params

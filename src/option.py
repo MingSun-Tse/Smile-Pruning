@@ -192,41 +192,48 @@ parser.add_argument('--pruner', type=str, default='l1')
 parser.add_argument('--reiniter', type=str, default='pth_reset')
 args = parser.parse_args()
 
-# parse for layer-wise prune ratio
-# stage_pr is a list of float, skip_layers is a list of strings
-if args.stage_pr:
-    if args.index_layer == 'numbers': # deprecated, kept for now for back-compatability, will be removed
-        if is_single_branch(args.arch): # e.g., alexnet, vgg
-            args.stage_pr = parse_prune_ratio_vgg(args.stage_pr, num_layers=num_layers[args.arch]) # example: [0-4:0.5, 5:0.6, 8-10:0.2]
-            args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [0, 2, 6]
-            assert args.stage_pr[num_layers[args.arch] - 1] == 0, 'The output layer should NOT be pruned. Please check your "--stage_pr" setting.'
-        else: # e.g., resnet
-            args.stage_pr = strlist_to_list(args.stage_pr, float) # example: [0, 0.4, 0.5, 0]
-            args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [2.3.1, 3.1]
-    elif args.index_layer == 'name_matching':
-        args.stage_pr = strdict_to_dict(args.stage_pr, float)
-else:
-    assert args.base_pr_model, 'If stage_pr is not provided, base_pr_model must be provided'
 
-# set up finetuning lr
-assert args.lr_ft, 'lr_ft must be provided'
-args.lr_ft = strdict_to_dict(args.lr_ft, float)
+def check_args(args):
+	# parse for layer-wise prune ratio
+	# stage_pr is a list of float, skip_layers is a list of strings
+	if isinstance(args.stage_pr, str) and args.stage_pr:
+		if args.index_layer == 'numbers': # deprecated, kept for now for back-compatability, will be removed
+			if is_single_branch(args.arch): # e.g., alexnet, vgg
+				args.stage_pr = parse_prune_ratio_vgg(args.stage_pr, num_layers=num_layers[args.arch]) # example: [0-4:0.5, 5:0.6, 8-10:0.2]
+				args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [0, 2, 6]
+				assert args.stage_pr[num_layers[args.arch] - 1] == 0, 'The output layer should NOT be pruned. Please check your "--stage_pr" setting.'
+			else: # e.g., resnet
+				args.stage_pr = strlist_to_list(args.stage_pr, float) # example: [0, 0.4, 0.5, 0]
+				args.skip_layers = strlist_to_list(args.skip_layers, str) # example: [2.3.1, 3.1]
+		elif args.index_layer == 'name_matching':
+			args.stage_pr = strdict_to_dict(args.stage_pr, float)
+	# else:
+	# 	assert args.base_pr_model, 'If stage_pr is not provided, base_pr_model must be provided'
 
-args.resume_path = check_path(args.resume_path)
-args.directly_ft_weights = check_path(args.directly_ft_weights)
-args.base_model_path = check_path(args.base_model_path)
-args.base_pr_model = check_path(args.base_pr_model)
+	# Set up finetuning lr
+	assert args.lr_ft, 'lr_ft must be provided'
+	if isinstance(args.lr_ft, str):
+		args.lr_ft = strdict_to_dict(args.lr_ft, float)
 
-args.previous_layers = strdict_to_dict(args.previous_layers, str)
+	args.resume_path = check_path(args.resume_path)
+	args.directly_ft_weights = check_path(args.directly_ft_weights)
+	args.base_model_path = check_path(args.base_model_path)
+	args.base_pr_model = check_path(args.base_pr_model)
 
-# TODO
-if args.pipeline in ['L1_Iter']:
-    assert args.num_cycles > 0
-    args.lr_ft_mini = strdict_to_dict(args.lr_ft_mini, float)
+	if isinstance(args.previous_layers, str):
+		args.previous_layers = strdict_to_dict(args.previous_layers, str)
 
-# some deprecated params to maintain back-compatibility
-args.copy_bn_w = True
-args.copy_bn_b = True
-args.reg_multiplier = 1
+	# TODO
+	if args.pipeline in ['L1_Iter']:
+		assert args.num_cycles > 0
+		if isinstance(args.lr_ft_mini, str):
+			args.lr_ft_mini = strdict_to_dict(args.lr_ft_mini, float)
 
+	# some deprecated params to maintain back-compatibility
+	args.copy_bn_w = True
+	args.copy_bn_b = True
+	args.reg_multiplier = 1
+	return args
+
+args = check_args(args)
 args = update_args(args)

@@ -38,7 +38,7 @@ from utils import Dataset_lmdb_batch
 from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
 from model import model_dict, is_single_branch
 from dataset import num_classes_dict, input_size_dict
-from option import args
+from option import args, check_args
 pjoin = os.path.join
 
 original_print = print
@@ -234,12 +234,15 @@ def main_worker(gpu, ngpus_per_node, args):
     ix_module = 0
     for m_name, config in zip(pipeline, configs):
         ix_module += 1
+        print(f'')
+        print(f'***************** Model processor #{ix_module} ({m_name}) starts *****************')
         module = module_dict[m_name]
         args_copy = copy.deepcopy(args)
         if config:
             args_copy = update_args_from_file(args_copy, config)
-            print(f'==> Args updated from file "{config}".')
-            print(args_copy)
+            args_copy = check_args(args_copy)
+            print(f'==> Args updated from file "{config}":')
+            print_args(args_copy)
         logger.suffix = f'_{logger.ExpID}_methodmodule{ix_module}_{m_name}'
         model = module(model, loader, args_copy, logger)
     ###################################################################################
@@ -256,6 +259,23 @@ def get_pipeline(method:str):
             pipeline += [mp]
             configs += [None]
     return pipeline, configs
+
+def print_args(args):
+    # build a key map for later sorting
+    key_map = {}
+    for k in args.__dict__:
+        k_lower = k.lower()
+        if k_lower in key_map:
+            key_map[k_lower + '_' + k_lower] = k
+        else:
+            key_map[k_lower] = k
+    
+    # print in the order of sorted lower keys 
+    logtmp = ''
+    for k_ in sorted(key_map.keys()):
+        real_key = key_map[k_]
+        logtmp += "('%s': %s) " % (real_key, args.__dict__[real_key])
+    print(logtmp + '\n', unprefix=True)
 
 if __name__ == '__main__':
     main()

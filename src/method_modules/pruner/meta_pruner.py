@@ -220,21 +220,32 @@ class MetaPruner:
         return pr
     
     def get_pr(self):
-        '''Get layer-wise pruning ratio for each layer.
-        '''
+        r"""Get layer-wise pruning ratio for each layer.
+        """
         self.pr = {}
-        if self.args.stage_pr: # stage_pr may be None (in the case that base_pr_model is provided)
+        # The provided base model may have sparsity already, so here we take a look at the model first.
+        for name, m in self.model.named_modules():
+            if isinstance(m, self.learnable_layers):
+                self.pr[name] = 1. - m.weight.data.count_nonzero() / m.weight.data.numel()
+                print(f'Layer {name} has sparsity: {self.pr[name]}')
+
+        # Get new pr for current round of pruning
+        if self.args.stage_pr:
             assert self.args.base_pr_model is None
             if self.args.index_layer == 'numbers': # old way to assign pruning ratios, deprecated, will be removed
                 get_layer_pr = self._get_layer_pr_vgg if self.is_single_branch(self.args.arch) else self._get_layer_pr_resnet
                 for name, m in self.model.named_modules():
                     if isinstance(m, self.learnable_layers):
-                        self.pr[name] = get_layer_pr(name)
+                        pr_this_time = get_layer_pr(name)
+                        self.pr[name] = pr_this_time if self.args.wg in ['filter', 'channel'] else self.pr[name] + (1 - self.pr[name]) * pr_this_time
+            
             elif self.args.index_layer == 'name_matching':
                 for name, m in self.model.named_modules():
                     if isinstance(m, self.learnable_layers):
-                        self.pr[name] = self._get_pr_by_name_matching(name)
+                        pr_this_time = self._get_pr_by_name_matching(name)
+                        self.pr[name] = pr_this_time if self.args.wg in ['filter', 'channel'] else self.pr[name] + (1 - self.pr[name]) * pr_this_time
         else:
+            # TODO-@mst: This path does not support iterative pruning so far. Will add this.
             assert self.args.base_pr_model
             state = torch.load(self.args.base_pr_model)
             self.pruned_wg_pr_model = state['pruned_wg']
@@ -276,7 +287,7 @@ class MetaPruner:
                         intersection = [x for x in self.pruned_wg_pr_model[name] if x in self.pruned_wg[name]]
                         intersection_ratio = len(intersection) / len(self.pruned_wg[name]) if len(self.pruned_wg[name]) else 0
                         logtmp += ', intersection ratio of the weights picked by L1 vs. base_pr_model: %.4f (%d)' % (intersection_ratio, len(intersection))
-                    self.netprint(logtmp)
+                    print(logtmp)
 
     def _get_kept_filter_channel(self, m, name):
         '''For filter/channel pruning, prune one layer will affect the following/previous layer. This func is to figure out which filters
@@ -320,6 +331,10 @@ class MetaPruner:
     def _prune_and_build_new_model(self):
         if self.args.wg == 'weight':
             self._get_mask()
+            # Apply mask
+            for name, m in self.model.named_modules():
+                if name in self.mask:
+                    m.weight.data.mul_(self.mask[name])
             return
 
         new_model = copy.deepcopy(self.model)

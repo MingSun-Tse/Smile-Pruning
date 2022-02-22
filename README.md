@@ -7,12 +7,13 @@ This repository is meant to provide a generic code base for neural network pruni
 ## Step 1: Set up environment
 - OS: Linux (Ubuntu 1404 and 1604 checked. It should be all right for most linux platforms. Windows and MacOS not checked.)
 - python=3.6.9 (conda to manage environment is strongly suggested)
-- All the dependant libraries are summarized in `requirements.txt`. Simply install them by `pip install -r requirements.txt`.
+- All the dependant libraries are summarized in `requirements_pt1.9.txt` (PyTorch 1.9 is used). Simply install them by `pip install -r requirements_pt1.9.txt`.
 - CUDA and cuDNN
 
 After the installlations, download the code:
 ```
 git clone git@github.com:mingsun-tse/smile-pruning.git -b master
+cd Smile-Pruning/src
 ```
 
 ## Quick Start

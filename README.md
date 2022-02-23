@@ -1,5 +1,5 @@
 # Smile-Pruning
-This repository is meant to provide a generic code base for neural network pruning, especially for **pruning at initialization** (PaI).
+This repository is meant to provide a generic code base for neural network pruning, especially for **pruning at initialization** (PaI). (In preparation now, you may check our survey paper and paper collection below.)
 
 [[Survey](https://arxiv.org/abs/2103.06460) | [Paper Collection](https://github.com/MingSun-Tse/Awesome-Pruning-at-Initialization)]
 

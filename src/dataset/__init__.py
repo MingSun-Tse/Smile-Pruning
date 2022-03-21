@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 class Data(object):
     def __init__(self, args):
         self.args = args
-        loader = import_module("dataset.data_loader_%s" % args.dataset)
+        loader = import_module("dataset.%s" % args.dataset)
         path = os.path.join(args.data_path, args.dataset)
         train_set, test_set = loader.get_data_loader(path, args.batch_size)
         

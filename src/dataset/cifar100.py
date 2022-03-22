@@ -2,7 +2,7 @@ from torchvision.datasets import CIFAR100
 import torchvision.transforms as transforms
 
 
-def get_data_loader(data_path, batch_size):
+def get_dataset(data_path, batch_size):
     transform_train = transforms.Compose([
         transforms.RandomCrop(32, padding=4),
         transforms.RandomHorizontalFlip(),
@@ -29,3 +29,7 @@ def get_data_loader(data_path, batch_size):
                         transform=transform_test)
 
     return train_set, test_set
+
+
+num_classes = 100
+input_shape = (3, 32, 32)

@@ -82,7 +82,7 @@ class Dataset_npy_batch(data.Dataset):
         return len(self.data)
 
 
-def get_data_loader(data_path, batch_size):
+def get_dataset(data_path, batch_size):
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                       std=[0.229, 0.224, 0.225])
     transform_train = transforms.Compose([

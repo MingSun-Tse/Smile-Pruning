@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 
 
-def get_data_loader(data_path, batch_size):
+def get_dataset(data_path, batch_size):
     transform = transforms.Compose([
         transforms.Resize((32, 32)),
         transforms.ToTensor(),
@@ -20,3 +20,6 @@ def get_data_loader(data_path, batch_size):
                      transform=transform)
 
     return train_set, test_set
+
+num_classes = 10
+input_shape = (1, 32, 32)

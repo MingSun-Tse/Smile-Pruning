@@ -4,19 +4,6 @@ from .resnet_cifar10 import resnet56
 from .lenet5 import lenet5, lenet5_mini, lenet5_linear, lenet5_wider_linear, lenet5_wider_linear_nomaxpool
 from .mlp import mlp_7_linear, mlp_7_relu
 
-def set_up_model(args, logger):
-    logger.log_printer("==> making model ...")
-    module = import_module("model.model_%s" % args.method)
-    model = module.make_model(args, logger)    
-    return model
-
-def is_single_branch(model_name):
-    for k in single_branch_model:
-        if model_name.startswith(k):
-            return True
-    return False
-
-
 model_dict = {
     'mlp_7_linear': mlp_7_linear,
     'mlp_7_relu': mlp_7_relu,
@@ -61,3 +48,9 @@ single_branch_model = [
     'alexnet',
     'vgg',
 ]
+
+def is_single_branch(model_name):
+    for k in single_branch_model:
+        if model_name.startswith(k):
+            return True
+    return False

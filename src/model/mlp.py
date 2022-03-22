@@ -3,7 +3,7 @@ import torch.nn as nn
 import math
 
 class FCNet(nn.Module):
-    def __init__(self, d_image, n_class, n_fc, width=0, n_param=0, branch_layer_out_dim=[], act='relu', dropout=0):
+    def __init__(self, dim_input, num_classes, num_fc, width=0, num_params=0, branch_layer_out_dim=[], act='relu', dropout=0):
         super(FCNet, self).__init__()
         # activation func
         if act == 'relu':
@@ -15,23 +15,23 @@ class FCNet(nn.Module):
         else:
             raise NotImplementedError
         
-        n_middle = n_fc - 2
+        num_middle = num_fc - 2
         if width == 0:
-            # Given total num of parameters budget, calculate the width: n_middle * width^2 + width * (d_image + n_class) = n_param 
-            assert n_param > 0
-            Delta = (d_image + n_class) * (d_image + n_class) + 4 * n_middle * n_param
-            width = (math.sqrt(Delta) - d_image - n_class) / 2 / n_middle
+            # Given total num of parameters budget, calculate the width: num_middle * width^2 + width * (dim_input + num_classes) = num_params 
+            assert num_params > 0
+            Delta = (dim_input + num_classes) * (dim_input + num_classes) + 4 * num_middle * num_params
+            width = (math.sqrt(Delta) - dim_input - num_classes) / 2 / num_middle
             width = int(width)
             print("FC net width = %s" % width)
 
         # build the stem net
-        net = [nn.Linear(d_image, width), activation]
-        for i in range(n_middle):
+        net = [nn.Linear(dim_input, width), activation]
+        for i in range(num_middle):
             net.append(nn.Linear(width, width))
-            if dropout and n_middle - i <= 2: # the last two middle fc layers will be applied with dropout
+            if dropout and num_middle - i <= 2: # the last two middle fc layers will be applied with dropout
                 net.append(nn.Dropout(dropout))
             net.append(activation)
-        net.append(nn.Linear(width, n_class))
+        net.append(nn.Linear(width, num_classes))
         self.net = nn.Sequential(*net)
         
         # build branch layers
@@ -67,8 +67,8 @@ class FCNet(nn.Module):
 
 # Refer to: A Signal Propagation Perspective for Pruning Neural Networks at Initialization (ICLR 2020).
 # https://github.com/namhoonlee/spp-public/blob/32bde490f19b4c28843303f1dc2935efcd09ebc9/spp/network.py#L108
-def mlp_7_linear(**kwargs):
-    return FCNet(d_image=1024, n_class=10, n_fc=7, width=100, act='linear')
+def mlp_7_linear(num_classes=10, num_channels=1, **kwargs):
+    return FCNet(dim_input=1024, num_classes=num_classes, num_fc=7, width=100, act='linear')
 
-def mlp_7_relu(**kwargs):
-    return FCNet(d_image=1024, n_class=10, n_fc=7, width=100, act='relu')
+def mlp_7_relu(num_classes=10, num_channels=1, **kwargs):
+    return FCNet(dim_input=1024, num_classes=num_classes, num_fc=7, width=100, act='relu')

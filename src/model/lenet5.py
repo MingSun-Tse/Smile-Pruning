@@ -2,10 +2,10 @@ import torch
 import torch.nn as nn
 
 class LeNet5(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int = 10, num_channels: int = 1):
         super(LeNet5, self).__init__()
 
-        self.conv1 = nn.Conv2d(1, 6, kernel_size=(5, 5))
+        self.conv1 = nn.Conv2d(num_channels, 6, kernel_size=(5, 5))
         self.relu1 = nn.ReLU()
         self.maxpool1 = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
         self.conv2 = nn.Conv2d(6, 16, kernel_size=(5, 5))
@@ -15,7 +15,7 @@ class LeNet5(nn.Module):
         self.relu3 = nn.ReLU()
         self.fc1 = nn.Linear(120, 84)
         self.relu4 = nn.ReLU()
-        self.fc2 = nn.Linear(84, 10)
+        self.fc2 = nn.Linear(84, num_classes)
 
     def forward(self, img):
         output = self.conv1(img)
@@ -33,10 +33,10 @@ class LeNet5(nn.Module):
         return output
 
 class LeNet5_Mini(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int = 10, num_channels: int = 1):
         super(LeNet5_Mini, self).__init__()
 
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=(5, 5))
+        self.conv1 = nn.Conv2d(num_channels, 10, kernel_size=(5, 5))
         self.relu1 = nn.ReLU()
         self.maxpool1 = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
         self.conv2 = nn.Conv2d(10, 10, kernel_size=(5, 5))
@@ -46,7 +46,7 @@ class LeNet5_Mini(nn.Module):
         self.relu3 = nn.ReLU()
         self.fc1 = nn.Linear(10, 10)
         self.relu4 = nn.ReLU()
-        self.fc2 = nn.Linear(10, 10)
+        self.fc2 = nn.Linear(10, num_classes)
 
     def forward(self, img):
         output = self.conv1(img)
@@ -64,9 +64,9 @@ class LeNet5_Mini(nn.Module):
         return output
 
 class LeNet5_Linear(nn.Module):
-    def __init__(self):
+    def __init__(self, num_classes: int = 10, num_channels: int = 1):
         super(LeNet5_Linear, self).__init__()
-        self.conv1 = nn.Conv2d(1, 6, kernel_size=(5, 5))
+        self.conv1 = nn.Conv2d(num_channels, 6, kernel_size=(5, 5))
         self.act1 = nn.Identity()
         self.maxpool1 = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
         self.conv2 = nn.Conv2d(6, 16, kernel_size=(5, 5))
@@ -76,7 +76,7 @@ class LeNet5_Linear(nn.Module):
         self.act3 = nn.Identity()
         self.fc1 = nn.Linear(120, 84)
         self.act4 = nn.Identity()
-        self.fc2 = nn.Linear(84, 10)
+        self.fc2 = nn.Linear(84, num_classes)
 
     def forward(self, img):
         output = self.conv1(img)
@@ -96,10 +96,10 @@ class LeNet5_Linear(nn.Module):
 class LeNet5_Wider_Linear(nn.Module):
     ''' 10x num of filters in conv layers
     '''
-    def __init__(self):
+    def __init__(self, num_classes: int = 10, num_channels: int = 1):
         super(LeNet5_Wider_Linear, self).__init__()
 
-        self.conv1 = nn.Conv2d(1, 60, kernel_size=(5, 5))
+        self.conv1 = nn.Conv2d(num_channels, 60, kernel_size=(5, 5))
         self.act1 = nn.Identity()
         self.maxpool1 = nn.MaxPool2d(kernel_size=(2, 2), stride=2)
         self.conv2 = nn.Conv2d(60, 160, kernel_size=(5, 5))
@@ -109,7 +109,7 @@ class LeNet5_Wider_Linear(nn.Module):
         self.act3 = nn.Identity()
         self.fc1 = nn.Linear(1200, 84)
         self.act4 = nn.Identity()
-        self.fc2 = nn.Linear(84, 10)
+        self.fc2 = nn.Linear(84, num_classes)
 
     def forward(self, img):
         output = self.conv1(img)
@@ -129,10 +129,10 @@ class LeNet5_Wider_Linear(nn.Module):
 class LeNet5_Wider_Linear_NoMaxPool(nn.Module):
     '''Use more filters for the first two conv layers.
     '''
-    def __init__(self):
+    def __init__(self, num_classes: int = 10, num_channels: int = 1):
         super(LeNet5_Wider_Linear_NoMaxPool, self).__init__()
 
-        self.conv1 = nn.Conv2d(1, 100, kernel_size=(3, 3), stride=2) # 14x14
+        self.conv1 = nn.Conv2d(num_channels, 100, kernel_size=(3, 3), stride=2) # 14x14
         self.act1 = nn.Identity()
         self.conv2 = nn.Conv2d(100, 100, kernel_size=(3, 3), stride=2) # 7x7
         self.act2 = nn.Identity()
@@ -140,7 +140,7 @@ class LeNet5_Wider_Linear_NoMaxPool(nn.Module):
         self.act3 = nn.Identity()
         self.fc1 = nn.Linear(900, 84)
         self.act4 = nn.Identity()
-        self.fc2 = nn.Linear(84, 10)
+        self.fc2 = nn.Linear(84, num_classes)
 
     def forward(self, img):
         output = self.conv1(img)
@@ -155,17 +155,17 @@ class LeNet5_Wider_Linear_NoMaxPool(nn.Module):
         output = self.fc2(output)
         return output
 
-def lenet5(**kwargs):
-    return LeNet5()
+def lenet5(num_classes, num_channels, **kwargs):
+    return LeNet5(num_classes, num_channels)
 
-def lenet5_mini(**kwargs):
-    return LeNet5_Mini()
+def lenet5_mini(num_classes, num_channels, **kwargs):
+    return LeNet5_Mini(num_classes, num_channels)
 
-def lenet5_linear(**kwargs):
-    return LeNet5_Linear()
+def lenet5_linear(num_classes, num_channels, **kwargs):
+    return LeNet5_Linear(num_classes, num_channels)
 
-def lenet5_wider_linear(**kwargs):
-    return LeNet5_Wider_Linear()
+def lenet5_wider_linear(num_classes, num_channels, **kwargs):
+    return LeNet5_Wider_Linear(num_classes, num_channels)
 
-def lenet5_wider_linear_nomaxpool(**kwargs):
-    return LeNet5_Wider_Linear_NoMaxPool()
+def lenet5_wider_linear_nomaxpool(num_classes, num_channels, **kwargs):
+    return LeNet5_Wider_Linear_NoMaxPool(num_classes, num_channels)

@@ -101,12 +101,15 @@ class BasicBlock(nn.Module):
 
 
 class ResNet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, conv_type='default'):
+    def __init__(self, block, num_blocks, 
+                num_classes: int = 10, 
+                num_channels: int = 3,
+                conv_type: str = 'default'):
         super(ResNet, self).__init__()
         self.in_planes = 16
 
         Conv2d = Conv2D_WN if conv_type == 'wn' else nn.Conv2d # @mst: weight normalization
-        self.conv1 = Conv2d(3, 16, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1 = Conv2d(num_channels, 16, kernel_size=3, stride=1, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(16)
         self.layer1 = self._make_layer(block, 16, num_blocks[0], stride=1)
         self.layer2 = self._make_layer(block, 32, num_blocks[1], stride=2)
@@ -135,25 +138,25 @@ class ResNet(nn.Module):
         return out
 
 
-def resnet20(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [3, 3, 3], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet20(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [3, 3, 3], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])
 
 
-def resnet32(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [5, 5, 5], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet32(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [5, 5, 5], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])
 
 
-def resnet44(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [7, 7, 7], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet44(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [7, 7, 7], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])
 
 
-def resnet56(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [9, 9, 9], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet56(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [9, 9, 9], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])
 
 
-def resnet110(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [18, 18, 18], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet110(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [18, 18, 18], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])
 
 
-def resnet1202(num_classes=10, **kwargs):
-    return ResNet(BasicBlock, [200, 200, 200], num_classes=num_classes, conv_type=kwargs['conv_type'])
+def resnet1202(num_classes=10, num_channels=3, **kwargs):
+    return ResNet(BasicBlock, [200, 200, 200], num_classes=num_classes, num_channels=num_channels, conv_type=kwargs['conv_type'])

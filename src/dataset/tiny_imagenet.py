@@ -24,7 +24,7 @@ transform_test = transforms.Compose([
     normalize,
 ])
 
-def get_data_loader(data_path, batch_size):
+def get_dataset(data_path, batch_size):
     train_set = Dataset_npy_batch(
         data_path + "/train",
         transform=transform_train,
@@ -34,3 +34,6 @@ def get_data_loader(data_path, batch_size):
         transform=transform_test,
     )
     return train_set, test_set
+
+num_classes = 200
+input_shape = (3, 64, 64)

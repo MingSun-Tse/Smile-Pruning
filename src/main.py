@@ -1,9 +1,6 @@
-'''
-    This code is based on the official PyTorch ImageNet training example 'main.py'. Commit ID: 69d2798, 04/23/2020.
+"""This code is based on the official PyTorch ImageNet training example 'main.py'. Commit ID: 69d2798, 04/23/2020.
     URL: https://github.com/pytorch/examples/tree/master/imagenet
-    Major modified parts will be indicated by '@mst' mark.
-    Questions to @mingsun-tse (huan.wang.cool@gmail.com).
-'''
+"""
 import argparse
 import os
 import random
@@ -37,7 +34,6 @@ from utils import add_noise_to_model, compute_jacobian, _weights_init_orthogonal
 from utils import Dataset_lmdb_batch
 from utils import AverageMeter, ProgressMeter, adjust_learning_rate, accuracy
 from model import model_dict, is_single_branch
-from dataset import num_classes_dict, input_size_dict
 from option import args, check_args
 pjoin = os.path.join
 
@@ -57,9 +53,6 @@ class MyDataParallel(torch.nn.DataParallel):
 # ---
 
 def main():
-    # @mst: move this to above, won't influence the original functions
-    # args = parser.parse_args()
-    
     if args.seed is not None:
         random.seed(args.seed)
         torch.manual_seed(args.seed)
@@ -104,8 +97,6 @@ def main_worker(gpu, ngpus_per_node, args):
     train_sampler = None
     if args.dataset not in ['imagenet', 'imagenet_subset_200']:
         loader = Data(args)
-        train_loader = loader.train_loader
-        val_loader = loader.test_loader
     else:   
         traindir = os.path.join(args.data_path, args.dataset, 'train')
         val_folder = 'val'
@@ -168,12 +159,15 @@ def main_worker(gpu, ngpus_per_node, args):
             args.rank = args.rank * ngpus_per_node + gpu
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
+    
     # create model
-    num_classes = num_classes_dict[args.dataset]
-    *_, num_channels, input_height, input_width = input_size_dict[args.dataset]
+    dataset = import_module("dataset.%s" % args.dataset)
+    num_classes = dataset.num_classes
+    assert len(dataset.input_shape) == 3
+    num_channels, input_height, input_width = dataset.input_shape
     logger.passer['input_size'] = [1, num_channels, input_height, input_width]
     logger.passer['is_single_branch'] = is_single_branch
-    if args.dataset in ["imagenet", "imagenet_subset_200", "tiny_imagenet"]:
+    if args.dataset in ["imagenet", "imagenet_subset_200"]:
         if args.pretrained:
             print("=> using pre-trained model '{}'".format(args.arch))
             model = models.__dict__[args.arch](num_classes=num_classes, pretrained=True)

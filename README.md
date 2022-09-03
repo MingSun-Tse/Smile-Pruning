@@ -3,6 +3,9 @@ This repository is meant to provide a generic code base for neural network pruni
 
 [[Survey](https://arxiv.org/abs/2103.06460) | [Paper Collection](https://github.com/MingSun-Tse/Awesome-Pruning-at-Initialization)]
 
+## Update Log
+[09/03/2022] This repo is at a _slowly_ upgrading process right now due to the limited time of the main develpers (Huan and Yue, specifically). But in general, completing this code project is still on our schedule. Thanks for staying tuned!
+
 
 ## Set up environment
 - OS: Linux (Ubuntu 1404 and 1604 checked. It should be all right for most linux platforms. Windows and MacOS not checked.)
@@ -43,11 +46,11 @@ We expect, given a kind of pruning pipeline (`--pipeline`), we can arbitrarily c
 In this code we refer to the following implementations: [pytorch imagenet example](https://github.com/pytorch/examples/tree/master/imagenet), [rethinking-network-pruning](https://github.com/Eric-mingjie/rethinking-network-pruning), [EigenDamage-Pytorch](https://github.com/alecwangcq/EigenDamage-Pytorch), [pytorch_resnet_cifar10](https://github.com/akamaster/pytorch_resnet_cifar10). Great thanks to them!
 
 ## Reference
-Please cite this in your publication if our work helps your research:
+If our paper/this paper collection/the code base helps your research/project, please generously consider to cite our paper. Thank you!
 
-    @article{wang2021recent,
+    @inproceedings{wang2022recent,
       Author = {Wang, Huan and Qin, Can and Bai, Yue and Zhang, Yulun and Fu, Yun},
       Title = {Recent Advances on Neural Network Pruning at Initialization},
-      Journal = {arXiv preprint arXiv:2103.06460},
-      Year = {2021}
+      Booktitle = {IJCAI},
+      Year = {2022}
     }
